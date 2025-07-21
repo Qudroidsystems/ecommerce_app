@@ -8,10 +8,16 @@ import '../models/product_model.dart';
 class CategoryController extends GetxController {
   static CategoryController get instance => Get.find();
 
+  /// Observables
   RxBool isLoading = true.obs;
   RxList<CategoryModel> allCategories = <CategoryModel>[].obs;
   RxList<CategoryModel> featuredCategories = <CategoryModel>[].obs;
+
+  /// Dependencies
   final _categoryRepository = Get.put(CategoryRepository());
+  final  _productRepository = Get.put(ProductRepository());
+
+
 
   @override
   void onInit() {
@@ -19,21 +25,22 @@ class CategoryController extends GetxController {
     super.onInit();
   }
 
-  /// -- Load category data
+  /// Fetch all categories
   Future<void> fetchCategories() async {
     try {
-      // Show loader while loading categories
       isLoading.value = true;
 
-      // Fetch categories from data source (Firestore, API, etc.)
+      // Fetch categories from repository
       final fetchedCategories = await _categoryRepository.getAllCategories();
 
-      // Update the categories list
+      // Update state
       allCategories.assignAll(fetchedCategories);
-
-      // Filter featured categories
-      featuredCategories.assignAll(allCategories.where((category) => (category.isFeatured) && category.parentId.isEmpty).take(8).toList());
-
+      featuredCategories.assignAll(
+        allCategories
+            .where((category) => category.isFeatured && category.parentId.isEmpty)
+            .take(8)
+            .toList(),
+      );
     } catch (e) {
       TLoaders.errorSnackBar(title: 'Oh Snap!', message: e.toString());
     } finally {
@@ -41,24 +48,23 @@ class CategoryController extends GetxController {
     }
   }
 
-
-  /// -- Load selected category data
+  /// Fetch subcategories by category ID
   Future<List<CategoryModel>> getSubCategories(String categoryId) async {
-    // Fetch all categories where ParentId = categoryId;
     try {
-      final subCategories = await _categoryRepository.getSubCategories(categoryId);
-      return subCategories;
+      return await _categoryRepository.getSubCategories(categoryId);
     } catch (e) {
       TLoaders.errorSnackBar(title: 'Oh Snap!', message: e.toString());
       return [];
     }
   }
 
-  /// Get Category or Sub-Category Products.
-  /// If you want to fetch all the products in this category SET [limit] to -1
+  /// Fetch products by category ID
   Future<List<ProductModel>> getCategoryProducts({required String categoryId, int limit = 4}) async {
-    // Fetch limited (4) products against each subCategory;
-    final products = await ProductRepository.instance.getProductsForCategory(categoryId: categoryId, limit: limit);
-    return products;
+    try {
+      return await _productRepository.getProductsForCategory(categoryId: categoryId, limit: limit);
+    } catch (e) {
+      TLoaders.errorSnackBar(title: 'Oh Snap!', message: e.toString());
+      return [];
+    }
   }
 }

@@ -5,6 +5,7 @@ import '../../../../common/widgets/appbar/appbar.dart';
 import '../../../../common/widgets/images/t_circular_image.dart';
 import '../../../../common/widgets/shimmers/shimmer.dart';
 import '../../../../common/widgets/texts/section_heading.dart';
+import '../../../../data/repositories/authentication/authentication_repository.dart';
 import '../../../../utils/constants/image_strings.dart';
 import '../../../../utils/constants/sizes.dart';
 import '../../controllers/user_controller.dart';
@@ -33,16 +34,16 @@ class ProfileScreen extends StatelessWidget {
                 child: Column(
                   children: [
                     Obx(
-                      () {
-                        final networkImage = controller.user.value.profilePicture;
-                        final image = networkImage.isNotEmpty ? networkImage : TImages.user;
+                          () {
+                        final networkImage = controller.user.value.profileImage;
+                        final image = (networkImage != null && networkImage.isNotEmpty) ? networkImage : TImages.user;
                         return controller.imageUploading.value
                             ? const TShimmerEffect(width: 80, height: 80, radius: 80)
-                            : TCircularImage(image: image, width: 80, height: 80, isNetworkImage: networkImage.isNotEmpty);
+                            : TCircularImage(image: image, width: 80, height: 80, isNetworkImage: networkImage != null && networkImage.isNotEmpty);
                       },
                     ),
                     TextButton(
-                      onPressed: controller.imageUploading.value ? () {} : () => controller.uploadUserProfilePicture(),
+                      onPressed: controller.imageUploading.value ? null : () => controller.uploadUserProfilePicture(),
                       child: const Text('Change Profile Picture'),
                     ),
                   ],
@@ -60,9 +61,9 @@ class ProfileScreen extends StatelessWidget {
               const SizedBox(height: TSizes.spaceBtwItems),
               const TSectionHeading(title: 'Personal Information', showActionButton: false),
               const SizedBox(height: TSizes.spaceBtwItems),
-              TProfileMenu(onPressed: () {}, title: 'User ID', value: '45689', icon: Iconsax.copy),
+              TProfileMenu(onPressed: () {}, title: 'User ID', value: AuthenticationRepository.instance.getUserID, icon: Iconsax.copy),
               TProfileMenu(onPressed: () {}, title: 'E-mail', value: controller.user.value.email),
-              TProfileMenu(onPressed: () {}, title: 'Phone Number', value: controller.user.value.phoneNumber),
+              TProfileMenu(onPressed: () {}, title: 'Phone Number', value: controller.user.value.phoneNumber ?? 'Not set'),
               TProfileMenu(onPressed: () {}, title: 'Gender', value: 'Male'),
               TProfileMenu(onPressed: () {}, title: 'Date of Birth', value: '1 Jan, 1900'),
               const Divider(),

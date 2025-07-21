@@ -1,231 +1,211 @@
-import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
-
-import '../../../common/widgets/loaders/circular_loader.dart';
 import '../../../data/repositories/authentication/authentication_repository.dart';
 import '../../../data/repositories/user/user_repository.dart';
 import '../../../utils/constants/image_strings.dart';
-import '../../../utils/constants/sizes.dart';
-import '../../../utils/helpers/network_manager.dart';
+import '../../../utils/exceptions/exceptions.dart';
 import '../../../utils/popups/full_screen_loader.dart';
 import '../../../utils/popups/loaders.dart';
-import '../../authentication/screens/login/login.dart';
 import '../models/user_model.dart';
-import '../screens/profile/re_authenticate_user_login_form.dart';
 
-/// Controller to manage user-related functionality.
 class UserController extends GetxController {
   static UserController get instance => Get.find();
 
-  Rx<UserModel> user = UserModel.empty().obs;
+  final userRepository = Get.find<UserRepository>();
+  final authRepository = Get.find<AuthenticationRepository>();
+  final user = UserModel.empty().obs;
   final imageUploading = false.obs;
   final profileLoading = false.obs;
-  final profileImageUrl = ''.obs;
-  final hidePassword = false.obs;
+  final hidePassword = true.obs;
   final verifyEmail = TextEditingController();
   final verifyPassword = TextEditingController();
-  final userRepository = Get.put(UserRepository());
-  GlobalKey<FormState> reAuthFormKey = GlobalKey<FormState>();
+  final reAuthFormKey = GlobalKey<FormState>();
 
-  /// init user data when Home Screen appears
   @override
   void onInit() {
-    fetchUserRecord();
     super.onInit();
+    fetchUserRecord();
   }
 
   /// Fetch user record
   Future<void> fetchUserRecord() async {
     try {
       profileLoading.value = true;
-      final user = await userRepository.fetchUserDetails();
-      this.user(user);
+      final userData = await userRepository.fetchUserDetails();
+      user.value = userData;
     } catch (e) {
-      user(UserModel.empty());
+      user.value = UserModel.empty();
+      TLoaders.errorSnackBar(
+        title: 'Error',
+        message: e is TExceptions ? e.message : 'Failed to fetch user data: $e',
+      );
     } finally {
       profileLoading.value = false;
     }
   }
 
-  /// Save user Record from any Registration provider
-  Future<void> saveUserRecord({UserModel? user, UserCredential? userCredentials}) async {
+  /// Save user record from API response
+  Future<void> saveUserRecord({Map<String, dynamic>? userResponse}) async {
     try {
-      // First UPDATE Rx User and then check if user data is already stored. If not store new data
-      await fetchUserRecord();
-
-      // If no record already stored.
-      if (this.user.value.id.isEmpty) {
-        if (userCredentials != null) {
-          // Convert Name to First and Last Name
-          final nameParts = UserModel.nameParts(userCredentials.user!.displayName ?? '');
-          final customUsername = UserModel.generateUsername(userCredentials.user!.displayName ?? '');
-
-          // Map data
-          final newUser = UserModel(
-            id: userCredentials.user!.uid,
-            firstName: nameParts[0],
-            lastName: nameParts.length > 1 ? nameParts.sublist(1).join(' ') : "",
-            username: customUsername,
-            email: userCredentials.user!.email ?? '',
-            phoneNumber: userCredentials.user!.phoneNumber ?? '',
-            profilePicture: userCredentials.user!.photoURL ?? '',
-            createdAt: DateTime.now(),
-          );
-
-          // Save user data
-          await userRepository.saveUserRecord(newUser);
-
-          // Assign new user to the RxUser so that we can use it through out the app.
-          this.user(newUser);
-        } else if (user != null) {
-          // Save Model when user registers using Email and Password
-          await userRepository.saveUserRecord(user);
-
-          // Assign new user to the RxUser so that we can use it through out the app.
-          this.user(user);
-        }
+      profileLoading.value = true;
+      if (userResponse != null) {
+        final newUser = UserModel.fromJson(userResponse['user']);
+        user.value = newUser;
+        await userRepository.saveUserRecord(newUser);
+      } else {
+        throw TExceptions('No user data provided');
       }
     } catch (e) {
-      TLoaders.warningSnackBar(
-        title: 'Data not saved',
-        message: 'Something went wrong while saving your information. You can re-save your data in your Profile.',
+      TLoaders.errorSnackBar(
+        title: 'Error',
+        message: e is TExceptions ? e.message : 'Failed to save user record: $e',
       );
+    } finally {
+      profileLoading.value = false;
     }
   }
 
-  /// Upload Profile Picture
-  uploadUserProfilePicture() async {
+  /// Upload profile picture
+  Future<void> uploadUserProfilePicture() async {
     try {
-      final image = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 70, maxHeight: 512, maxWidth: 512);
-      if (image != null) {
-        imageUploading.value = true;
-        final uploadedImage = await userRepository.uploadImage('Users/Images/Profile/', image);
-        profileImageUrl.value = uploadedImage;
-        Map<String, dynamic> newImage = {'ProfilePicture': uploadedImage};
-        await userRepository.updateSingleField(newImage);
-        user.value.profilePicture = uploadedImage;
-        user.refresh();
-
-        imageUploading.value = false;
-        TLoaders.successSnackBar(title: 'Congratulations', message: 'Your Profile Image has been updated!');
+      final image = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 70,
+        maxHeight: 512,
+        maxWidth: 512,
+      );
+      if (image == null) {
+        TLoaders.warningSnackBar(title: 'No Image Selected', message: 'Please select an image.');
+        return;
       }
+
+      imageUploading.value = true;
+
+      final imageUrl = await userRepository.uploadProfilePicture(image);
+      user.value = user.value.copyWith(profileImage: imageUrl);
+      await userRepository.updateSingleField({'profile_image': imageUrl});
+
+      TLoaders.successSnackBar(title: 'Success', message: 'Profile picture updated successfully');
     } catch (e) {
+      TLoaders.errorSnackBar(
+        title: 'Error',
+        message: e is TExceptions ? e.message : 'Failed to upload profile picture: $e',
+      );
+    } finally {
       imageUploading.value = false;
-      TLoaders.errorSnackBar(title: 'OhSnap', message: 'Something went wrong: $e');
     }
   }
 
-  /// Delete Account Warning
-  void deleteAccountWarningPopup() {
-    Get.defaultDialog(
-      contentPadding: const EdgeInsets.all(TSizes.md),
-      title: 'Delete Account',
-      middleText:
-          'Are you sure you want to delete your account permanently? This action is not reversible and all of your data will be removed permanently.',
-      confirm: ElevatedButton(
-        onPressed: () async => deleteUserAccount(),
-        style: ElevatedButton.styleFrom(backgroundColor: Colors.red, side: const BorderSide(color: Colors.red)),
-        child: const Padding(padding: EdgeInsets.symmetric(horizontal: TSizes.lg), child: Text('Delete')),
-      ),
-      cancel: OutlinedButton(
-        child: const Text('Cancel'),
-        onPressed: () => Navigator.of(Get.overlayContext!).pop(),
-      ),
-    );
-  }
-
-  /// Delete User Account
-  void deleteUserAccount() async {
+  /// Update gender
+  Future<void> updateGender(String gender) async {
     try {
-      TFullScreenLoader.openLoadingDialog('Processing', TImages.docerAnimation);
-
-      /// First re-authenticate user
-      final auth = AuthenticationRepository.instance;
-      final provider = auth.firebaseUser!.providerData.map((e) => e.providerId).first;
-      if (provider.isNotEmpty) {
-        // Re Verify Auth Email
-        if (provider == 'google.com') {
-          await auth.signInWithGoogle();
-          await auth.deleteAccount();
-          TFullScreenLoader.stopLoading();
-          Get.offAll(() => const LoginScreen());
-        } else if (provider == 'facebook.com') {
-          await auth.signInWithFacebook();
-          await auth.deleteAccount();
-          TFullScreenLoader.stopLoading();
-          Get.offAll(() => const LoginScreen());
-        } else if (provider == 'password') {
-          TFullScreenLoader.stopLoading();
-          Get.to(() => const ReAuthLoginForm());
-        }
-      }
+      profileLoading.value = true;
+      await userRepository.updateSingleField({'gender': gender});
+      user.value = user.value.copyWith(gender: gender);
+      TLoaders.successSnackBar(title: 'Success', message: 'Gender updated successfully');
     } catch (e) {
-      TFullScreenLoader.stopLoading();
-      TLoaders.warningSnackBar(title: 'Oh Snap!', message: e.toString());
+      TLoaders.errorSnackBar(
+        title: 'Error',
+        message: e is TExceptions ? e.message : 'Failed to update gender: $e',
+      );
+    } finally {
+      profileLoading.value = false;
     }
   }
 
-  /// -- RE-AUTHENTICATE before deleting
+  /// Update date of birth
+  Future<void> updateDateOfBirth(DateTime dateOfBirth) async {
+    try {
+      profileLoading.value = true;
+      await userRepository.updateSingleField({'date_of_birth': dateOfBirth.toIso8601String()});
+      user.value = user.value.copyWith(dateOfBirth: dateOfBirth);
+      TLoaders.successSnackBar(title: 'Success', message: 'Date of birth updated successfully');
+    } catch (e) {
+      TLoaders.errorSnackBar(
+        title: 'Error',
+        message: e is TExceptions ? e.message : 'Failed to update date of birth: $e',
+      );
+    } finally {
+      profileLoading.value = false;
+    }
+  }
+
+  /// Re-authenticate user
   Future<void> reAuthenticateEmailAndPasswordUser() async {
     try {
-      TFullScreenLoader.openLoadingDialog('Processing', TImages.docerAnimation);
-
-      //Check Internet
-      final isConnected = await NetworkManager.instance.isConnected();
-      if (!isConnected) {
-        TFullScreenLoader.stopLoading();
-        return;
-      }
-
       if (!reAuthFormKey.currentState!.validate()) {
-        TFullScreenLoader.stopLoading();
+        TLoaders.warningSnackBar(title: 'Validation Error', message: 'Please fill in all required fields.');
         return;
       }
 
-      await AuthenticationRepository.instance.reAuthenticateWithEmailAndPassword(verifyEmail.text.trim(), verifyPassword.text.trim());
-      await AuthenticationRepository.instance.deleteAccount();
+      TFullScreenLoader.openLoadingDialog('Re-authenticating...', TImages.docerAnimation);
+
+      final response = await authRepository.reAuthenticateWithEmailAndPassword(
+        verifyEmail.text.trim(),
+        verifyPassword.text.trim(),
+      );
+
       TFullScreenLoader.stopLoading();
-      Get.offAll(() => const LoginScreen());
+
+      if (response['success']) {
+        TLoaders.successSnackBar(title: 'Success', message: 'Re-authentication successful');
+        Get.back(); // Return to previous screen (e.g., ChangeName)
+      } else {
+        throw TExceptions(response['message'] ?? 'Re-authentication failed');
+      }
     } catch (e) {
       TFullScreenLoader.stopLoading();
-      TLoaders.warningSnackBar(title: 'Oh Snap!', message: e.toString());
+      TLoaders.errorSnackBar(
+        title: 'Error',
+        message: e is TExceptions ? e.message : 'Re-authentication failed: $e',
+      );
     }
   }
 
-  /// Logout Loader Function
-  logout() {
+  /// Logout
+  Future<void> logout() async {
     try {
-      Get.defaultDialog(
-        contentPadding: const EdgeInsets.all(TSizes.md),
-        title: 'Logout',
-        middleText: 'Are you sure you want to Logout?',
-        confirm: ElevatedButton(
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: TSizes.lg),
-            child: Text('Confirm'),
-          ),
-          onPressed: () async {
-            onClose();
-
-            /// On Confirmation show any loader until user Logged Out.
-            Get.defaultDialog(
-              title: '',
-              barrierDismissible: false,
-              backgroundColor: Colors.transparent,
-              content: const TCircularLoader(),
-            );
-            await AuthenticationRepository.instance.logout();
-          },
-        ),
-        cancel: OutlinedButton(
-          child: const Text('Cancel'),
-          onPressed: () => Navigator.of(Get.overlayContext!).pop(),
-        ),
-      );
+      await authRepository.logout();
+      user.value = UserModel.empty(); // Clear user data
     } catch (e) {
-      TLoaders.errorSnackBar(title: 'Oh Snap', message: e.toString());
+      TLoaders.errorSnackBar(
+        title: 'Error',
+        message: e is TExceptions ? e.message : 'Logout failed: $e',
+      );
     }
+  }
+
+  /// Delete account warning popup
+  Future<void> deleteAccountWarningPopup() async {
+    Get.defaultDialog(
+      title: 'Delete Account',
+      middleText: 'Are you sure you want to delete your account permanently? This action is not reversible.',
+      confirm: ElevatedButton(
+        onPressed: () async {
+          try {
+            TFullScreenLoader.openLoadingDialog('Deleting account...', TImages.docerAnimation);
+            await userRepository.deleteAccount();
+            await authRepository.logout();
+            user.value = UserModel.empty(); // Clear user data
+            TFullScreenLoader.stopLoading();
+            TLoaders.successSnackBar(title: 'Success', message: 'Account deleted successfully');
+          } catch (e) {
+            TFullScreenLoader.stopLoading();
+            TLoaders.errorSnackBar(
+              title: 'Error',
+              message: e is TExceptions ? e.message : 'Failed to delete account: $e',
+            );
+          }
+        },
+        child: const Text('Delete'),
+      ),
+      cancel: TextButton(
+        onPressed: () => Get.back(),
+        child: const Text('Cancel'),
+      ),
+    );
   }
 }

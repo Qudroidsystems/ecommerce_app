@@ -26,7 +26,7 @@ class UploadDataController extends GetxController {
       final controller = Get.put(CategoryRepository());
 
       // Upload All Categories and replace the Parent IDs in Firebase Console
-      await controller.uploadDummyData(TDummyData.categories);
+      // await controller.uploadDummyData(TDummyData.categories);
 
       // Re-fetch latest Categories
       await CategoryController.instance.fetchCategories();
@@ -54,7 +54,7 @@ class UploadDataController extends GetxController {
       final controller = Get.put(CategoryRepository());
 
       // Upload All Categories and replace the Parent IDs in Firebase Console
-      await controller.uploadProductCategoryDummyData(TDummyData.productCategories);
+      // await controller.uploadProductCategoryDummyData(TDummyData.productCategories);
 
       TLoaders.successSnackBar(title: 'Congratulations', message: 'All Categories Uploaded Successfully.');
     } catch (e) {
@@ -76,7 +76,7 @@ class UploadDataController extends GetxController {
       final controller = Get.put(BrandRepository());
 
       // Upload All Categories and replace the Parent IDs in Firebase Console
-      await controller.uploadDummyData(TDummyData.brands);
+      //await controller.uploadDummyData(TDummyData.brands);
 
       // Re-fetch latest Brands
       final brandController = Get.put(BrandController());
@@ -105,7 +105,7 @@ class UploadDataController extends GetxController {
       final controller = Get.put(BrandRepository());
 
       // Upload All Categories and replace the Parent IDs in Firebase Console
-      await controller.uploadBrandCategoryDummyData(TDummyData.brandCategory);
+      //await controller.uploadBrandCategoryDummyData(TDummyData.brandCategory);
 
       TLoaders.successSnackBar(title: 'Congratulations', message: 'All Brands Uploaded Successfully.');
     } catch (e) {
@@ -130,7 +130,7 @@ class UploadDataController extends GetxController {
       final controller = Get.put(ProductRepository());
 
       // Upload All Products and replace the Parent IDs in Firebase Console
-      await controller.uploadDummyData(TDummyData.products);
+      //await controller.uploadDummyData(TDummyData.products);
 
       // Re-fetch latest Featured Products
       ProductController.instance.fetchFeaturedProducts();
@@ -155,7 +155,7 @@ class UploadDataController extends GetxController {
       final controller = Get.put(BannerRepository());
 
       // Upload All Products and replace the Parent IDs in Firebase Console
-      await controller.uploadBannersDummyData(TDummyData.banners);
+      // await controller.uploadBannersDummyData(TDummyData.banners);
 
       // Re-fetch latest Banners
       final bannerController = Get.put(BannerController());

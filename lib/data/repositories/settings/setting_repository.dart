@@ -1,78 +1,76 @@
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../features/personalization/models/setting_model.dart';
-import '../../../utils/exceptions/firebase_auth_exceptions.dart';
-import '../../../utils/exceptions/format_exceptions.dart';
-import '../../../utils/exceptions/platform_exceptions.dart';
+import '../../../utils/exceptions/exceptions.dart';
+import '../../../utils/http/http_client.dart';
+import '../authentication/authentication_repository.dart';
 
-/// Repository class for setting-related operations.
 class SettingsRepository extends GetxController {
   static SettingsRepository get instance => Get.find();
 
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final _httpClient = Get.find<THttpHelper>();
 
-  /// Function to save setting data to Firestore.
+  /// Save setting data to the backend
   Future<void> registerSettings(SettingsModel setting) async {
     try {
-      await _db.collection("Settings").doc('GLOBAL_SETTINGS').set(setting.toJson());
-    } on FirebaseAuthException catch (e) {
-      throw TFirebaseAuthException(e.code).message;
-    } on FormatException catch (_) {
-      throw const TFormatException();
-    } on PlatformException catch (e) {
-      throw TPlatformException(e.code).message;
+      final response = await THttpHelper.post('settings', setting.toJson(), headers: {
+        'Authorization': 'Bearer ${Get.find<AuthenticationRepository>().deviceStorage.read('auth_token')}',
+        'Content-Type': 'application/json',
+      });
+
+      if (!response['success']) {
+        throw TExceptions(response['message'] ?? 'Failed to save settings');
+      }
     } catch (e) {
-      throw 'Something went wrong. Please try again';
+      throw TExceptions('Something went wrong while saving settings: $e');
     }
   }
 
-  /// Function to fetch setting details based on setting ID.
+  /// Fetch setting details
   Future<SettingsModel> getSettings() async {
     try {
-      final querySnapshot = await _db.collection("Settings").doc('GLOBAL_SETTINGS').get();
-      return SettingsModel.fromSnapshot(querySnapshot);
-    } on FirebaseAuthException catch (e) {
-      throw TFirebaseAuthException(e.code).message;
-    } on FormatException catch (_) {
-      throw const TFormatException();
-    } on PlatformException catch (e) {
-      throw TPlatformException(e.code).message;
+      final response = await THttpHelper.get('settings', headers: {
+        'Authorization': 'Bearer ${Get.find<AuthenticationRepository>().deviceStorage.read('auth_token')}',
+      });
+
+      if (!response['success']) {
+        throw TExceptions(response['message'] ?? 'Failed to fetch settings');
+      }
+
+      return SettingsModel.fromJson(response['settings']);
     } catch (e) {
-      if (kDebugMode) print('Something Went Wrong: $e');
-      throw 'Something Went Wrong: $e';
+      throw TExceptions('Something went wrong while fetching settings: $e');
     }
   }
 
-  /// Function to update setting data in Firestore.
+  /// Update setting data
   Future<void> updateSettingDetails(SettingsModel updatedSetting) async {
     try {
-      await _db.collection("Settings").doc('GLOBAL_SETTINGS').update(updatedSetting.toJson());
-    } on FirebaseAuthException catch (e) {
-      throw TFirebaseAuthException(e.code).message;
-    } on FormatException catch (_) {
-      throw const TFormatException();
-    } on PlatformException catch (e) {
-      throw TPlatformException(e.code).message;
+      final response = await THttpHelper.put('settings', updatedSetting.toJson(), headers: {
+        'Authorization': 'Bearer ${Get.find<AuthenticationRepository>().deviceStorage.read('auth_token')}',
+        'Content-Type': 'application/json',
+      });
+
+      if (!response['success']) {
+        throw TExceptions(response['message'] ?? 'Failed to update settings');
+      }
     } catch (e) {
-      throw 'Something went wrong. Please try again';
+      throw TExceptions('Something went wrong while updating settings: $e');
     }
   }
 
-  /// Update any field in specific Settings Collection
+  /// Update a single field in settings
   Future<void> updateSingleField(Map<String, dynamic> json) async {
     try {
-      await _db.collection("Settings").doc('GLOBAL_SETTINGS').update(json);
-    } on FirebaseAuthException catch (e) {
-      throw TFirebaseAuthException(e.code).message;
-    } on FormatException catch (_) {
-      throw const TFormatException();
-    } on PlatformException catch (e) {
-      throw TPlatformException(e.code).message;
+      final response = await THttpHelper.patch('settings', json, headers: {
+        'Authorization': 'Bearer ${Get.find<AuthenticationRepository>().deviceStorage.read('auth_token')}',
+        'Content-Type': 'application/json',
+      });
+
+      if (!response['success']) {
+        throw TExceptions(response['message'] ?? 'Failed to update settings field');
+      }
     } catch (e) {
-      throw 'Something went wrong. Please try again';
+      throw TExceptions('Something went wrong while updating settings field: $e');
     }
   }
 }

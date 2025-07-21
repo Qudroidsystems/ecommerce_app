@@ -1,96 +1,88 @@
-import 'package:cwt_ecommerce_app/utils/exceptions/firebase_exceptions.dart';
-import 'package:flutter/services.dart';
+import 'dart:io';
 import 'package:get/get.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-
-import '../../../features/shop/models/category_model.dart';
-import '../../../features/shop/models/product_category_model.dart';
-import '../../../utils/constants/enums.dart';
-import '../../../utils/exceptions/platform_exceptions.dart';
-import '../../services/cloud_storage/firebase_storage_service.dart';
-import 'package:path/path.dart' as path;
+import 'package:cwt_ecommerce_app/features/shop/models/category_model.dart'; // Adjust path
+import 'package:cwt_ecommerce_app/features/shop/models/product_category_model.dart'; // Adjust path
+import 'package:cwt_ecommerce_app/utils/http/http_client.dart'; // Adjust path
+import 'package:cwt_ecommerce_app/utils/exceptions/exceptions.dart'; // Adjust path for TExceptions
 
 class CategoryRepository extends GetxController {
   static CategoryRepository get instance => Get.find();
 
-  /// Variables
-  final _db = FirebaseFirestore.instance;
-
-  /* ---------------------------- FUNCTIONS ---------------------------------*/
-
   /// Get all categories
   Future<List<CategoryModel>> getAllCategories() async {
     try {
-      final snapshot = await _db.collection("Categories").get();
-      final result = snapshot.docs.map((e) => CategoryModel.fromSnapshot(e)).toList();
-      return result;
-    } on FirebaseException catch (e) {
-      throw TFirebaseException(e.code).message;
-    } on PlatformException catch (e) {
-      throw TPlatformException(e.code).message;
+      final response = await THttpHelper.get('/categories');
+
+      if (response == null || response['data'] == null) {
+        throw const FormatException('Unexpected API response');
+      }
+
+      final List<dynamic> data = response['data'];
+      return data.map((e) => CategoryModel.fromJson(e)).toList();
     } catch (e) {
-      throw 'Something went wrong. Please try again';
+      throw _handleError(e, 'fetching all categories');
     }
   }
 
-  /// Get Featured categories
+
+  /// Get subcategories by categoryId
   Future<List<CategoryModel>> getSubCategories(String categoryId) async {
     try {
-      final snapshot = await _db.collection("Categories").where('ParentId', isEqualTo: categoryId).get();
-      final result = snapshot.docs.map((e) => CategoryModel.fromSnapshot(e)).toList();
-      return result;
-    } on FirebaseException catch (e) {
-      throw TFirebaseException(e.code).message;
-    } on PlatformException catch (e) {
-      throw TPlatformException(e.code).message;
+      final response = await THttpHelper.get('/categories?parent_id=$categoryId');
+      final List<dynamic> data = response['data'] ?? [];
+      return data.map((e) => CategoryModel.fromJson(e)).toList();
     } catch (e) {
-      throw 'Something went wrong. Please try again';
+      throw _handleError(e, 'fetching subcategories for category ID: $categoryId');
     }
   }
 
-  /// Upload Categories to the Cloud Firebase
+  /// Upload category dummy data to the Laravel API
   Future<void> uploadDummyData(List<CategoryModel> categories) async {
     try {
-      // Upload all the Categories along with their Images
-      final storage = Get.put(TFirebaseStorageService());
-
-      // Loop through each category
       for (var category in categories) {
-        // Get ImageData link from the local assets
-        final file = await storage.getImageDataFromAssets(category.image);
+        String imageUrl = category.image;
 
-        // Upload Image and Get its URL
-        final url = await storage.uploadImageData('Categories', file, path.basename(category.name), MediaCategory.categories.name);
+        if (category.image.isNotEmpty && File(category.image).existsSync()) {
+          final uploadResponse = await THttpHelper.uploadFile('api/upload', File(category.image), 'image');
+          imageUrl = uploadResponse['url'] ?? category.image;
+        }
 
-        // Assign URL to Category.image attribute
-        category.image = url;
+        // Create a new instance to avoid modifying the original object
+        final updatedCategory = CategoryModel(
+          id: category.id,
+          name: category.name,
+          image: imageUrl,
+          isFeatured: category.isFeatured,
+          parentId: category.parentId,
+        );
 
-        // Store Category in Firestore
-        await _db.collection("Categories").doc(category.id).set(category.toJson());
+        await THttpHelper.post('/categories', updatedCategory.toJson());
       }
-    } on FirebaseException catch (e) {
-      throw TFirebaseException(e.code).message;
-    } on PlatformException catch (e) {
-      throw TPlatformException(e.code).message;
     } catch (e) {
-      throw 'Something went wrong. Please try again';
+      throw _handleError(e, 'uploading dummy category data');
     }
   }
 
-  /// Upload Categories to the Cloud Firebase
-  Future<void> uploadProductCategoryDummyData(List<ProductCategoryModel> productCategory) async {
+
+  /// Upload product category dummy data to the Laravel API
+  Future<void> uploadProductCategoryDummyData(List<ProductCategoryModel> productCategories) async {
     try {
-      // Loop through each category
-      for (var entry in productCategory) {
-        // Store Category in Firestore
-        await _db.collection("ProductCategory").doc().set(entry.toJson());
+      for (var entry in productCategories) {
+        await THttpHelper.post('api/product-categories', entry.toJson());
       }
-    } on FirebaseException catch (e) {
-      throw TFirebaseException(e.code).message;
-    } on PlatformException catch (e) {
-      throw TPlatformException(e.code).message;
     } catch (e) {
-      throw 'Something went wrong. Please try again';
+      throw _handleError(e, 'uploading dummy product-category data');
+    }
+  }
+
+  /// Error handling method
+  TExceptions _handleError(dynamic e, String operation) {
+    if (e is SocketException) {
+      return TExceptions('No Internet connection while $operation. Please try again.');
+    } else if (e is HttpException) {
+      return TExceptions('Server error while $operation: ${e.message}');
+    } else {
+      return TExceptions('Something went wrong while $operation: $e');
     }
   }
 }

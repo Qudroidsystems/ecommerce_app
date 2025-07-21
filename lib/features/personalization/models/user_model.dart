@@ -1,95 +1,115 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
-import '../../../utils/constants/enums.dart';
-import '../../../utils/formatters/formatter.dart';
-import '../../shop/models/cart_model.dart';
-import 'address_model.dart';
-
-/// Model class representing user data.
 class UserModel {
-  // Keep those values final which you do not want to update
   final String id;
-  String firstName;
-  String lastName;
+  final String firstName;
+  final String lastName;
   final String username;
   final String email;
-  String phoneNumber;
-  String profilePicture;
-  final CartModel? cart;
-  final List<AddressModel>? addresses;
-  AppRole role;
-  DateTime? createdAt;
-  DateTime? updatedAt;
+  final String? phoneNumber;
+  final String? profileImage;
+  final String? socialProvider;
+  final String? gender;
+  final DateTime? dateOfBirth;
+  final DateTime? emailVerifiedAt;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+  final List<Map<String, dynamic>> addresses;
 
-  /// Constructor for UserModel.
   UserModel({
     required this.id,
     required this.firstName,
     required this.lastName,
     required this.username,
     required this.email,
-    required this.phoneNumber,
-    required this.profilePicture,
-    this.cart,
-    this.addresses,
-    this.role = AppRole.user,
+    this.phoneNumber,
+    this.profileImage,
+    this.socialProvider,
+    this.gender,
+    this.dateOfBirth,
+    this.emailVerifiedAt,
     this.createdAt,
     this.updatedAt,
+    this.addresses = const [],
   });
 
-  /// Helper function to get the full name.
   String get fullName => '$firstName $lastName';
 
-  /// Helper function to format phone number.
-  String get formattedPhoneNo => TFormatter.formatPhoneNumber(phoneNumber);
-
-  /// Static function to split full name into first and last name.
-  static List<String> nameParts(fullName) => fullName.split(" ");
-
-  /// Static function to generate a username from the full name.
-  static String generateUsername(fullName) {
-    List<String> nameParts = fullName.split(" ");
-    String firstName = nameParts[0].toLowerCase();
-    String lastName = nameParts.length > 1 ? nameParts[1].toLowerCase() : "";
-
-    String camelCaseUsername = "$firstName$lastName"; // Combine first and last name
-    String usernameWithPrefix = "cwt_$camelCaseUsername"; // Add "cwt_" prefix
-    return usernameWithPrefix;
+  factory UserModel.fromJson(Map<String, dynamic> json) {
+    return UserModel(
+      id: json['id'].toString(),
+      firstName: json['first_name'] ?? '',
+      lastName: json['last_name'] ?? '',
+      username: json['username'] ?? '',
+      email: json['email'] ?? '',
+      phoneNumber: json['phone_number'],
+      profileImage: json['profile_image'],
+      socialProvider: json['social_provider'],
+      gender: json['gender'],
+      dateOfBirth: json['date_of_birth'] != null ? DateTime.parse(json['date_of_birth']) : null,
+      emailVerifiedAt: json['email_verified_at'] != null ? DateTime.parse(json['email_verified_at']) : null,
+      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
+      updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at']) : null,
+      addresses: (json['addresses'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [],
+    );
   }
 
-  /// Static function to create an empty user model.
-  static UserModel empty() => UserModel(id: '', firstName: '', lastName: '', username: '', email: '', phoneNumber: '', profilePicture: '');
-
-  /// Convert model to JSON structure for storing data in Firebase.
   Map<String, dynamic> toJson() {
     return {
-      'FirstName': firstName,
-      'LastName': lastName,
-      'Username': username,
-      'Email': email,
-      'PhoneNumber': phoneNumber,
-      'ProfilePicture': profilePicture,
-      'Role': AppRole.user.name,
-      'CreatedAt': createdAt = DateTime.now(),
-      'UpdatedAt': DateTime.now(),
+      'id': id,
+      'first_name': firstName,
+      'last_name': lastName,
+      'username': username,
+      'email': email,
+      'phone_number': phoneNumber,
+      'profile_image': profileImage,
+      'social_provider': socialProvider,
+      'gender': gender,
+      'date_of_birth': dateOfBirth?.toIso8601String(),
+      'email_verified_at': emailVerifiedAt?.toIso8601String(),
+      'created_at': createdAt?.toIso8601String(),
+      'updated_at': updatedAt?.toIso8601String(),
+      'addresses': addresses,
     };
   }
 
-  /// Factory method to create a UserModel from a Firebase document snapshot.
-  factory UserModel.fromSnapshot(DocumentSnapshot<Map<String, dynamic>> document) {
-    if (document.data() != null) {
-      final data = document.data()!;
-      return UserModel(
-        id: document.id,
-        firstName: data['FirstName'] ?? '',
-        lastName: data['LastName'] ?? '',
-        username: data['Username'] ?? '',
-        email: data['Email'] ?? '',
-        phoneNumber: data['PhoneNumber'] ?? '',
-        profilePicture: data['ProfilePicture'] ?? '',
-      );
-    } else {
-      return UserModel.empty();
-    }
+  UserModel copyWith({
+    String? id,
+    String? firstName,
+    String? lastName,
+    String? username,
+    String? email,
+    String? phoneNumber,
+    String? profileImage,
+    String? socialProvider,
+    String? gender,
+    DateTime? dateOfBirth,
+    DateTime? emailVerifiedAt,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    List<Map<String, dynamic>>? addresses,
+  }) {
+    return UserModel(
+      id: id ?? this.id,
+      firstName: firstName ?? this.firstName,
+      lastName: lastName ?? this.lastName,
+      username: username ?? this.username,
+      email: email ?? this.email,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      profileImage: profileImage ?? this.profileImage,
+      socialProvider: socialProvider ?? this.socialProvider,
+      gender: gender ?? this.gender,
+      dateOfBirth: dateOfBirth ?? this.dateOfBirth,
+      emailVerifiedAt: emailVerifiedAt ?? this.emailVerifiedAt,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      addresses: addresses ?? this.addresses,
+    );
   }
+
+  static UserModel empty() => UserModel(
+    id: '',
+    firstName: '',
+    lastName: '',
+    username: '',
+    email: '',
+  );
 }

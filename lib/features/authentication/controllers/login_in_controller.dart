@@ -1,7 +1,6 @@
-import 'package:get/get.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
-
 import '../../../data/repositories/authentication/authentication_repository.dart';
 import '../../../utils/constants/image_strings.dart';
 import '../../../utils/helpers/network_manager.dart';
@@ -18,7 +17,7 @@ class LoginController extends GetxController {
   final localStorage = GetStorage();
   final email = TextEditingController();
   final password = TextEditingController();
-  final userController = Get.put(UserController());
+  final userController = Get.find<UserController>();
   GlobalKey<FormState> loginFormKey = GlobalKey<FormState>();
 
   @override
@@ -28,7 +27,7 @@ class LoginController extends GetxController {
     super.onInit();
   }
 
-  /// -- Email and Password SignIn
+  /// Email and Password SignIn
   Future<void> emailAndPasswordSignIn() async {
     try {
       // Start Loading
@@ -38,7 +37,7 @@ class LoginController extends GetxController {
       final isConnected = await NetworkManager.instance.isConnected();
       if (!isConnected) {
         TFullScreenLoader.stopLoading();
-        TLoaders.customToast(message: 'No Internet Connection');
+        TLoaders.errorSnackBar(title: 'No Internet', message: 'Please check your internet connection.');
         return;
       }
 
@@ -52,22 +51,35 @@ class LoginController extends GetxController {
       if (rememberMe.value) {
         localStorage.write('REMEMBER_ME_EMAIL', email.text.trim());
         localStorage.write('REMEMBER_ME_PASSWORD', password.text.trim());
+      } else {
+        localStorage.remove('REMEMBER_ME_EMAIL');
+        localStorage.remove('REMEMBER_ME_PASSWORD');
       }
 
-      // Login user using EMail & Password Authentication
-      final userCredentials = await AuthenticationRepository.instance.loginWithEmailAndPassword(email.text.trim(), password.text.trim());
+      // Login user using Email & Password Authentication
+      final response = await AuthenticationRepository.instance.loginWithEmailAndPassword(
+        email.text.trim(),
+        password.text.trim(),
+      );
 
-      // Assign user data to RxUser of UserController to use in app
-      await userController.fetchUserRecord();
+      // Save user data
+      if (response['success']) {
+        await userController.saveUserRecord(userResponse: response);
+      }
 
       // Remove Loader
       TFullScreenLoader.stopLoading();
 
       // Redirect
-      await AuthenticationRepository.instance.screenRedirect(userCredentials.user);
+      try {
+        await AuthenticationRepository.instance.screenRedirect();
+      } catch (e) {
+        TLoaders.errorSnackBar(title: 'Navigation Error', message: 'Failed to redirect: $e');
+        Get.offAllNamed('/login'); // Fallback to login screen
+      }
     } catch (e) {
       TFullScreenLoader.stopLoading();
-      TLoaders.errorSnackBar(title: 'Oh Snap', message: e.toString());
+      TLoaders.errorSnackBar(title: 'Oh Snap!', message: e.toString());
     }
   }
 
@@ -75,29 +87,42 @@ class LoginController extends GetxController {
   Future<void> googleSignIn() async {
     try {
       // Start Loading
-      TFullScreenLoader.openLoadingDialog('Logging you in...', TImages.docerAnimation);
+      TFullScreenLoader.openLoadingDialog('Logging you in with Google...', TImages.docerAnimation);
 
       // Check Internet Connectivity
       final isConnected = await NetworkManager.instance.isConnected();
       if (!isConnected) {
         TFullScreenLoader.stopLoading();
+        TLoaders.errorSnackBar(title: 'No Internet', message: 'Please check your internet connection.');
         return;
       }
 
       // Google Authentication
-      final userCredentials = await AuthenticationRepository.instance.signInWithGoogle();
+      final response = await AuthenticationRepository.instance.signInWithGoogle();
+      if (response == null) {
+        TFullScreenLoader.stopLoading();
+        TLoaders.warningSnackBar(title: 'Cancelled', message: 'Google Sign-In was cancelled.');
+        return;
+      }
 
-      // Save Authenticated user data in the Firebase Firestore
-      await userController.saveUserRecord(userCredentials: userCredentials);
+      // Save user data
+      if (response['success']) {
+        await userController.saveUserRecord(userResponse: response);
+      }
 
       // Remove Loader
       TFullScreenLoader.stopLoading();
 
       // Redirect
-      await AuthenticationRepository.instance.screenRedirect(userCredentials?.user);
+      try {
+        await AuthenticationRepository.instance.screenRedirect();
+      } catch (e) {
+        TLoaders.errorSnackBar(title: 'Navigation Error', message: 'Failed to redirect: $e');
+        Get.offAllNamed('/login'); // Fallback to login screen
+      }
     } catch (e) {
       TFullScreenLoader.stopLoading();
-      TLoaders.errorSnackBar(title: 'Oh Snap', message: e.toString());
+      TLoaders.errorSnackBar(title: 'Oh Snap!', message: e.toString());
     }
   }
 
@@ -105,29 +130,42 @@ class LoginController extends GetxController {
   Future<void> facebookSignIn() async {
     try {
       // Start Loading
-      TFullScreenLoader.openLoadingDialog('Logging you in...', TImages.docerAnimation);
+      TFullScreenLoader.openLoadingDialog('Logging you in with Facebook...', TImages.docerAnimation);
 
       // Check Internet Connectivity
       final isConnected = await NetworkManager.instance.isConnected();
       if (!isConnected) {
         TFullScreenLoader.stopLoading();
+        TLoaders.errorSnackBar(title: 'No Internet', message: 'Please check your internet connection.');
         return;
       }
 
       // Facebook Authentication
-      final userCredentials = await AuthenticationRepository.instance.signInWithFacebook();
+      final response = await AuthenticationRepository.instance.signInWithFacebook();
+      if (response == null) {
+        TFullScreenLoader.stopLoading();
+        TLoaders.warningSnackBar(title: 'Cancelled', message: 'Facebook Sign-In was cancelled.');
+        return;
+      }
 
-      // Save Authenticated user data in the Firebase Firestore
-      await userController.saveUserRecord(userCredentials: userCredentials);
+      // Save user data
+      if (response['success']) {
+        await userController.saveUserRecord(userResponse: response);
+      }
 
       // Remove Loader
       TFullScreenLoader.stopLoading();
 
       // Redirect
-      await AuthenticationRepository.instance.screenRedirect(userCredentials.user);
+      try {
+        await AuthenticationRepository.instance.screenRedirect();
+      } catch (e) {
+        TLoaders.errorSnackBar(title: 'Navigation Error', message: 'Failed to redirect: $e');
+        Get.offAllNamed('/login'); // Fallback to login screen
+      }
     } catch (e) {
       TFullScreenLoader.stopLoading();
-      TLoaders.errorSnackBar(title: 'Oh Snap', message: e.toString());
+      TLoaders.errorSnackBar(title: 'Oh Snap!', message: e.toString());
     }
   }
 }

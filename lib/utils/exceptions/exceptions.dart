@@ -1,12 +1,8 @@
-/// Exception class for handling various errors.
 class TExceptions implements Exception {
-  /// The associated error message.
   final String message;
 
-  /// Default constructor with a generic error message.
   const TExceptions([this.message = 'An unexpected error occurred. Please try again.']);
 
-  /// Create an authentication exception from a Firebase authentication exception code.
   factory TExceptions.fromCode(String code) {
     switch (code) {
       case 'email-already-in-use':
@@ -53,4 +49,30 @@ class TExceptions implements Exception {
         return const TExceptions();
     }
   }
+
+  factory TExceptions.fromStatusCode(int statusCode, {String? errorMessage}) {
+    switch (statusCode) {
+      case 400:
+        return TExceptions(errorMessage ?? 'Bad request. Please check your input.');
+      case 401:
+        return TExceptions(errorMessage ?? 'Unauthorized. Please check your credentials.');
+      case 403:
+        return TExceptions(errorMessage ?? 'Forbidden. You do not have permission to access this resource.');
+      case 404:
+        return TExceptions(errorMessage ?? 'Resource not found. Please check the endpoint.');
+      case 500:
+        return TExceptions(errorMessage ?? 'Internal server error. Please try again later.');
+      case 502:
+        return TExceptions(errorMessage ?? 'Bad gateway. Please try again later.');
+      case 503:
+        return TExceptions(errorMessage ?? 'Service unavailable. Please try again later.');
+      case 504:
+        return TExceptions(errorMessage ?? 'Gateway timeout. Please check your network connection.');
+      default:
+        return TExceptions(errorMessage ?? 'Unexpected error occurred. Please try again.');
+    }
+  }
+
+  @override
+  String toString() => message;
 }

@@ -14,6 +14,7 @@ dependencies:
 
   # Utility Packages
   http: ^1.2.1
+  http_parser: ^4.0.2 # Add this line
   intl: ^0.19.0
   lottie: ^3.1.0 # OR RIVE
   shimmer: ^3.0.0

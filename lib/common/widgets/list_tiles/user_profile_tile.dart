@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
-
 import '../../../../utils/constants/colors.dart';
 import '../../../features/personalization/controllers/user_controller.dart';
 import '../../../utils/constants/image_strings.dart';
@@ -19,8 +18,9 @@ class TUserProfileTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      final isNetworkImage = controller.user.value.profilePicture.isNotEmpty;
-      final image = isNetworkImage ? controller.user.value.profilePicture : TImages.user;
+      final networkImage = controller.user.value.profileImage;
+      final isNetworkImage = networkImage != null && networkImage.isNotEmpty;
+      final image = isNetworkImage ? networkImage : TImages.user;
       return ListTile(
         leading: TCircularImage(padding: 0, image: image, width: 50, height: 50, isNetworkImage: isNetworkImage),
         title: Text(controller.user.value.fullName, style: Theme.of(context).textTheme.headlineSmall!.apply(color: TColors.white)),

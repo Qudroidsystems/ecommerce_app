@@ -1,15 +1,13 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
-/// Model class representing user data.
+/// Model class representing application settings.
 class SettingsModel {
   final String? id;
-  double taxRate;
-  double shippingCost;
-  double? freeShippingThreshold;
-  String appName;
-  String appLogo;
+  final double taxRate;
+  final double shippingCost;
+  final double? freeShippingThreshold;
+  final String appName;
+  final String appLogo;
 
-  /// Constructor for SettingModel.
+  /// Constructor for `SettingsModel`.
   SettingsModel({
     this.id,
     this.taxRate = 0.0,
@@ -19,9 +17,10 @@ class SettingsModel {
     this.appLogo = '',
   });
 
-  /// Convert model to JSON structure for storing data in Firebase.
+  /// Convert model to JSON structure for API requests.
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'taxRate': taxRate,
       'shippingCost': shippingCost,
       'freeShippingThreshold': freeShippingThreshold,
@@ -30,20 +29,34 @@ class SettingsModel {
     };
   }
 
-  /// Factory method to create a SettingModel from a Firebase document snapshot.
-  factory SettingsModel.fromSnapshot(DocumentSnapshot<Map<String, dynamic>> document) {
-    if (document.data() != null) {
-      final data = document.data()!;
-      return SettingsModel(
-        id: document.id,
-        taxRate: (data['taxRate'] as num?)?.toDouble() ?? 0.0,
-        shippingCost: (data['shippingCost'] as num?)?.toDouble() ?? 0.0,
-        freeShippingThreshold: (data['freeShippingThreshold'] as num?)?.toDouble() ?? 0.0,
-        appName: data.containsKey('appName') ? data['appName'] ?? '' : '',
-        appLogo: data.containsKey('appLogo') ? data['appLogo'] ?? '' : '',
-      );
-    } else {
-      return SettingsModel();
-    }
+  /// Factory method to create a `SettingsModel` from a JSON response.
+  factory SettingsModel.fromJson(Map<String, dynamic> json) {
+    return SettingsModel(
+      id: json['id'] as String?,
+      taxRate: (json['taxRate'] as num?)?.toDouble() ?? 0.0,
+      shippingCost: (json['shippingCost'] as num?)?.toDouble() ?? 0.0,
+      freeShippingThreshold: (json['freeShippingThreshold'] as num?)?.toDouble(),
+      appName: json['appName'] ?? '',
+      appLogo: json['appLogo'] ?? '',
+    );
+  }
+
+  /// Create a copy of the current model with updated fields.
+  SettingsModel copyWith({
+    String? id,
+    double? taxRate,
+    double? shippingCost,
+    double? freeShippingThreshold,
+    String? appName,
+    String? appLogo,
+  }) {
+    return SettingsModel(
+      id: id ?? this.id,
+      taxRate: taxRate ?? this.taxRate,
+      shippingCost: shippingCost ?? this.shippingCost,
+      freeShippingThreshold: freeShippingThreshold ?? this.freeShippingThreshold,
+      appName: appName ?? this.appName,
+      appLogo: appLogo ?? this.appLogo,
+    );
   }
 }
