@@ -28,20 +28,15 @@ class LoginController extends GetxController {
   /// Email and Password SignIn
   Future<void> emailAndPasswordSignIn() async {
     try {
-      // Start Loading
-      TFullScreenLoader.openLoadingDialog('Logging you in...', TImages.docerAnimation);
-
-      // Check Internet Connectivity
+      // Check Internet Connectivity first
       final isConnected = await NetworkManager.instance.isConnected();
       if (!isConnected) {
-        TFullScreenLoader.stopLoading();
         TLoaders.customToast(message: 'No Internet Connection');
         return;
       }
 
       // Form Validation
       if (!loginFormKey.currentState!.validate()) {
-        TFullScreenLoader.stopLoading();
         return;
       }
 
@@ -55,16 +50,17 @@ class LoginController extends GetxController {
       }
 
       // Login user using Email & Password Authentication
+      // AuthenticationRepository will handle all loading states and navigation
       await AuthenticationRepository.instance.loginWithEmailAndPassword(
         email.text.trim(),
         password.text.trim(),
       );
 
-      // Remove Loader
-      TFullScreenLoader.stopLoading();
-      // Navigation is handled by AuthenticationRepository
+      // DO NOT call TFullScreenLoader.stopLoading() here
+      // AuthenticationRepository handles it after successful navigation
+
     } catch (e) {
-      TFullScreenLoader.stopLoading();
+      // Only show error if AuthenticationRepository didn't handle it
       TLoaders.errorSnackBar(title: 'Oh Snap', message: e.toString());
     }
   }
@@ -72,25 +68,20 @@ class LoginController extends GetxController {
   /// Google SignIn Authentication
   Future<void> googleSignIn() async {
     try {
-      // Start Loading
-      TFullScreenLoader.openLoadingDialog('Logging you in...', TImages.docerAnimation);
-
-      // Check Internet Connectivity
+      // Check Internet Connectivity first
       final isConnected = await NetworkManager.instance.isConnected();
       if (!isConnected) {
-        TFullScreenLoader.stopLoading();
         TLoaders.customToast(message: 'No Internet Connection');
         return;
       }
 
       // Google Authentication
+      // AuthenticationRepository will handle all loading states and navigation
       await AuthenticationRepository.instance.signInWithGoogle();
 
-      // Remove Loader
-      TFullScreenLoader.stopLoading();
-      // Navigation is handled by AuthenticationRepository
+      // DO NOT call TFullScreenLoader.stopLoading() here
+
     } catch (e) {
-      TFullScreenLoader.stopLoading();
       TLoaders.errorSnackBar(title: 'Oh Snap', message: e.toString());
     }
   }
@@ -98,25 +89,20 @@ class LoginController extends GetxController {
   /// Facebook SignIn Authentication
   Future<void> facebookSignIn() async {
     try {
-      // Start Loading
-      TFullScreenLoader.openLoadingDialog('Logging you in...', TImages.docerAnimation);
-
-      // Check Internet Connectivity
+      // Check Internet Connectivity first
       final isConnected = await NetworkManager.instance.isConnected();
       if (!isConnected) {
-        TFullScreenLoader.stopLoading();
         TLoaders.customToast(message: 'No Internet Connection');
         return;
       }
 
       // Facebook Authentication
+      // AuthenticationRepository will handle all loading states and navigation
       await AuthenticationRepository.instance.signInWithFacebook();
 
-      // Remove Loader
-      TFullScreenLoader.stopLoading();
-      // Navigation is handled by AuthenticationRepository
+      // DO NOT call TFullScreenLoader.stopLoading() here
+
     } catch (e) {
-      TFullScreenLoader.stopLoading();
       TLoaders.errorSnackBar(title: 'Oh Snap', message: e.toString());
     }
   }

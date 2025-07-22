@@ -5,7 +5,7 @@ import 'package:get_storage/get_storage.dart';
 import '../exceptions/exceptions.dart';
 
 class THttpHelper {
-  static const String baseUrl = 'http://10.0.2.2:8000/api';
+  static const String baseUrl = 'http://192.168.1.103:8000/api';
   static final _storage = GetStorage();
 
   static Future<void> fetchCsrfToken() async {
@@ -129,10 +129,16 @@ class THttpHelper {
   static Map<String, dynamic> _handleResponse(http.Response response) {
     try {
       print('THttpHelper: Response status: ${response.statusCode}, body: ${response.body}');
+
+      // Check for HTML response (server error)
       if (response.body.contains('<!DOCTYPE html>')) {
         throw TExceptions('Invalid response: Server returned HTML instead of JSON', response.statusCode);
       }
+
+      // Parse the JSON response
       final body = response.body.isNotEmpty ? jsonDecode(response.body) : {};
+
+      // Handle successful responses (2xx)
       if (response.statusCode >= 200 && response.statusCode < 300) {
         if (body is Map<String, dynamic>) {
           return body;
@@ -141,13 +147,28 @@ class THttpHelper {
         } else {
           return {'success': true, 'data': body};
         }
-      } else if (response.statusCode == 401) {
+      }
+      // Handle client/server errors but with valid JSON response
+      else if (body is Map<String, dynamic>) {
+        // If it's a valid JSON response (like Laravel API responses), return it
+        // Let the calling method handle the success/failure logic based on the 'success' field
+        return body;
+      }
+      // Handle specific HTTP status codes that should throw exceptions
+      else if (response.statusCode == 401) {
         throw TExceptions('Unauthorized: Invalid or expired token', response.statusCode);
-      } else {
+      }
+      // Handle other errors
+      else {
         throw TExceptions.fromLaravelResponse(body, response.statusCode);
       }
     } catch (e) {
       print('THttpHelper: Response handling error: $e');
+      // If it's already a TExceptions, re-throw it
+      if (e is TExceptions) {
+        throw e;
+      }
+      // For JSON parsing errors, throw with the response body
       throw TExceptions('Failed to parse response: ${response.body}', response.statusCode);
     }
   }

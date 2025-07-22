@@ -1,5 +1,3 @@
-
-
 class ProductVariationModel {
   final String id;
   String sku;

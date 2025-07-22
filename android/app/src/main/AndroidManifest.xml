@@ -12,7 +12,7 @@
 
 
     <application
-        android:label="cwt_ecommerce_app"
+        android:label="Gozak"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:enableOnBackInvokedCallback="true">

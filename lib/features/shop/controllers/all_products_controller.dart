@@ -1,63 +1,59 @@
-// import 'package:cloud_firestore/cloud_firestore.dart';
-// import 'package:cwt_ecommerce_app/data/repositories/product/product_repository.dart';
-// import 'package:get/get.dart';
-//
-// import '../../../utils/popups/loaders.dart';
-// import '../models/product_model.dart';
-//
-// class AllProductsController extends GetxController {
-//   static AllProductsController get instance => Get.find();
-//
-//   final repository = ProductRepository.instance;
-//   final RxString selectedSortOption = 'Name'.obs;
-//   final RxList<ProductModel> products = <ProductModel>[].obs;
-//
-//   Future<List<ProductModel>> fetchProductsByQuery(Query? query) async {
-//     try {
-//       if(query == null) return [];
-//       return await repository.fetchProductsByQuery(query);
-//     } catch (e) {
-//       TLoaders.errorSnackBar(title: 'Oh Snap!', message: e.toString());
-//       return [];
-//     }
-//   }
-//
-//   void assignProducts(List<ProductModel> products) {
-//     // Assign products to the 'products' list
-//     this.products.assignAll(products);
-//     sortProducts('Name');
-//   }
-//
-//   void sortProducts(String sortOption) {
-//     selectedSortOption.value = sortOption;
-//
-//     switch (sortOption) {
-//       case 'Name':
-//         products.sort((a, b) => a.title.compareTo(b.title));
-//         break;
-//       case 'Higher Price':
-//         products.sort((a, b) => b.price.compareTo(a.price));
-//         break;
-//       case 'Lower Price':
-//         products.sort((a, b) => a.price.compareTo(b.price));
-//         break;
-//       case 'Newest':
-//         products.sort((a, b) => a.date!.compareTo(b.date!));
-//         break;
-//       case 'Sale':
-//         products.sort((a, b) {
-//           if (b.salePrice > 0) {
-//             return b.salePrice.compareTo(a.salePrice);
-//           } else if (a.salePrice > 0) {
-//             return -1;
-//           } else {
-//             return 1;
-//           }
-//         });
-//         break;
-//       default:
-//         // Default sorting option: Name
-//         products.sort((a, b) => a.title.compareTo(b.title));
-//     }
-//   }
-// }
+import 'package:cwt_ecommerce_app/data/repositories/product/product_repository.dart';
+import 'package:get/get.dart';
+
+import '../../../utils/popups/loaders.dart';
+import '../models/product_model.dart';
+
+import '../../../utils/http/http_client.dart'; // Your THttpHelper import
+
+class AllProductsController extends GetxController {
+  static AllProductsController get instance => Get.find();
+
+  // Observable variables
+  RxList<ProductModel> products = <ProductModel>[].obs;
+  RxString selectedSortOption = 'Name'.obs;
+
+  // Fetch all products from the Laravel API
+  Future<List<ProductModel>> fetchAllProducts() async {
+    try {
+      final response = await THttpHelper.get('api/products');
+      final List<dynamic> data = response['data'] ?? [];
+      return data.map((json) => ProductModel.fromJson(json)).toList();
+    } catch (e) {
+      throw Exception('Error fetching products: $e');
+    }
+  }
+
+  // Assign products to the observable list
+  void assignProducts(List<ProductModel> products) {
+    this.products.assignAll(products);
+    sortProducts(selectedSortOption.value); // Apply initial sorting
+  }
+
+  // Sort products based on the selected option
+  void sortProducts(String sortOption) {
+    selectedSortOption.value = sortOption;
+    switch (sortOption) {
+      case 'Name':
+        products.sort((a, b) => a.title.compareTo(b.title));
+        break;
+      case 'Higher Price':
+        products.sort((a, b) => b.price.compareTo(a.price));
+        break;
+      case 'Lower Price':
+        products.sort((a, b) => a.price.compareTo(b.price));
+        break;
+      case 'Sale':
+        products.sort((a, b) => (b.salePrice ?? b.price).compareTo(a.salePrice ?? a.price));
+        break;
+      case 'Newest':
+      // Uncomment and adjust if date field is available
+      // products.sort((a, b) => b.date!.compareTo(a.date!));
+        break;
+      case 'Popularity':
+        products.sort((a, b) => b.soldQuantity.compareTo(a.soldQuantity));
+        break;
+    }
+    products.refresh(); // Notify UI of changes
+  }
+}

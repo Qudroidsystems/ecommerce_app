@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'data/repositories/authentication/authentication_repository.dart';
 import 'app.dart';
+import '../../../utils/popups/full_screen_loader.dart';
 
 void main() async {
   final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();

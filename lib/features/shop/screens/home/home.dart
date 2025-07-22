@@ -22,7 +22,7 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // final controller = Get.put(ProductController());
+    final controller = Get.put(ProductController());
     return Scaffold(
       body: SingleChildScrollView(
         child: Column(
@@ -41,7 +41,7 @@ class HomeScreen extends StatelessWidget {
                   SizedBox(height: TSizes.spaceBtwSections),
 
                   /// -- Categories
-                  // THeaderCategories(),
+                  THeaderCategories(),
                   SizedBox(height: TSizes.spaceBtwSections * 2),
                 ],
               ),
@@ -54,40 +54,40 @@ class HomeScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   /// -- Promo Slider 1
-                  // const TPromoSlider(),
+                  const TPromoSlider(),
                   const SizedBox(height: TSizes.spaceBtwSections),
 
                   /// -- Products Heading
-                  // TSectionHeading(
-                  //   title: TTexts.popularProducts,
-                  //   onPressed: () => Get.to(
-                  //     () => AllProducts(
-                  //       title: TTexts.popularProducts,
-                  //       futureMethod: ProductRepository.instance.getAllFeaturedProducts(),
-                  //     ),
-                  //   ),
-                  // ),
+                  TSectionHeading(
+                    title: TTexts.popularProducts,
+                    onPressed: () => Get.to(
+                          () => AllProducts(
+                        title: TTexts.popularProducts,
+                        futureMethod: ProductRepository.instance.getAllFeaturedProducts(),
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: TSizes.spaceBtwItems),
 
                   /// Products Section
-                  // Obx(
-                  //   () {
-                  //     // Display loader while products are loading
-                  //     if (controller.isLoading.value) return const TVerticalProductShimmer();
-                  //
-                  //     // Check if no featured products are found
-                  //     if (controller.featuredProducts.isEmpty) {
-                  //       return Center(child: Text('No Data Found!', style: Theme.of(context).textTheme.bodyMedium));
-                  //     } else {
-                  //       // Featured Products Found! 🎊
-                  //       return TGridLayout(
-                  //         itemCount: controller.featuredProducts.length,
-                  //         itemBuilder: (_, index) =>
-                  //             TProductCardVertical(product: controller.featuredProducts[index], isNetworkImage: true),
-                  //       );
-                  //     }
-                  //   },
-                  // ),
+                  Obx(
+                        () {
+                      // Display loader while products are loading
+                      if (controller.isLoading.value) return const TVerticalProductShimmer();
+
+                      // Check if no featured products are found
+                      if (controller.featuredProducts.isEmpty) {
+                        return Center(child: Text('No Data Found!', style: Theme.of(context).textTheme.bodyMedium));
+                      } else {
+                        // Featured Products Found!
+                        return TGridLayout(
+                          itemCount: controller.featuredProducts.length,
+                          itemBuilder: (_, index) =>
+                              TProductCardVertical(product: controller.featuredProducts[index], isNetworkImage: true),
+                        );
+                      }
+                    },
+                  ),
 
                   SizedBox(height: TDeviceUtils.getBottomNavigationBarHeight() + TSizes.defaultSpace),
                 ],

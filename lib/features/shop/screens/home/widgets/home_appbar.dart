@@ -18,7 +18,7 @@ class THomeAppBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Just to create instance and fetch values
-    // Get.put(SettingsController());
+    Get.put(SettingsController());
     final userController = Get.put(UserController());
 
     return TAppBar(
@@ -55,7 +55,7 @@ class THomeAppBar extends StatelessWidget {
           ],
         ),
       ),
-      // actions: const [TCartCounterIcon(iconColor: TColors.white, counterBgColor: TColors.black, counterTextColor: TColors.white)],
+      actions: const [TCartCounterIcon(iconColor: TColors.white, counterBgColor: TColors.black, counterTextColor: TColors.white)],
     );
   }
 }

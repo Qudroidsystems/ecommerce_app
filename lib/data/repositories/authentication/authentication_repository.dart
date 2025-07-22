@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:get/get.dart';
@@ -33,36 +35,66 @@ class AuthenticationRepository extends GetxController {
     screenRedirect();
   }
 
+// Updated loginWithEmailAndPassword method with better debugging
   Future<void> loginWithEmailAndPassword(String email, String password) async {
     try {
-      TFullScreenLoader.openLoadingDialog('Logging in...', TImages.docerAnimation);
+      print('Login: Starting login process');
+
+      // Try alternative loader first
+      TFullScreenLoader.openLoadingDialogAlternative('Logging in...', TImages.docerAnimation);
+
+      // Add a small delay to ensure the loader shows
+      await Future.delayed(const Duration(milliseconds: 100));
+
       final isConnected = await NetworkManager.instance.isConnected();
       if (!isConnected) {
-        TFullScreenLoader.stopLoading();
+        TFullScreenLoader.stopLoadingAlternative();
         TLoaders.warningSnackBar(title: 'No Connection', message: 'Please check your internet connection.');
         return;
       }
+
+      print('Login: Making API call');
       final response = await THttpHelper.post('login', {
         'email': email,
         'password': password,
       }, skipCsrf: true);
-      TFullScreenLoader.stopLoading();
+
       if (response['success']) {
+        print('Login: API call successful, storing data');
+
         await _storage.write(_tokenKey, response['token']);
         await _storage.write(_userIdKey, response['user']['id'].toString());
         await _storage.write(_emailKey, response['user']['email']);
         await _storage.write(_emailVerifiedKey, response['user']['email_verified_at']);
         _lastLoginResponse.value = response;
+
+        // Update loader text
+        TFullScreenLoader.stopLoadingAlternative();
+        await Future.delayed(const Duration(milliseconds: 100));
+        TFullScreenLoader.openLoadingDialogAlternative('Preparing your experience...', TImages.docerAnimation);
+
+        print('Login: Fetching user record');
         await UserController.instance.fetchUserRecord();
+
+        print('Login: Redirecting to appropriate screen');
         await screenRedirect();
+
+        // Stop loading after navigation
+        TFullScreenLoader.stopLoadingAlternative();
+        print('Login: Process completed successfully');
+
       } else {
+        TFullScreenLoader.stopLoadingAlternative();
         throw TExceptions(response['message'] ?? 'Login failed', response['statusCode']);
       }
     } catch (e) {
-      TFullScreenLoader.stopLoading();
+      print('Login: Error occurred: $e');
+      TFullScreenLoader.stopLoadingAlternative();
       TLoaders.errorSnackBar(title: 'Oh Snap!', message: e.toString());
     }
   }
+
+
 
   Future<void> registerWithEmailAndPassword({
     required String email,
@@ -79,6 +111,7 @@ class AuthenticationRepository extends GetxController {
         TLoaders.warningSnackBar(title: 'No Connection', message: 'Please check your internet connection.');
         return;
       }
+
       final response = await THttpHelper.post('register', {
         'email': email,
         'password': password,
@@ -86,15 +119,21 @@ class AuthenticationRepository extends GetxController {
         'last_name': lastName,
         'phone_number': phoneNumber,
       }, skipCsrf: true);
-      TFullScreenLoader.stopLoading();
+
       if (response['success']) {
         await _storage.write(_tokenKey, response['token']);
         await _storage.write(_userIdKey, response['user']['id'].toString());
         await _storage.write(_emailKey, response['user']['email']);
         await _storage.write(_emailVerifiedKey, response['user']['email_verified_at']);
         _lastLoginResponse.value = response;
+
+        // Keep loading while navigating
         await Get.offAll(() => VerifyEmailScreen(email: email));
+
+        // Stop loading after navigation
+        TFullScreenLoader.stopLoading();
       } else {
+        TFullScreenLoader.stopLoading();
         throw TExceptions(response['message'] ?? 'Registration failed', response['statusCode']);
       }
     } catch (e) {
@@ -112,26 +151,34 @@ class AuthenticationRepository extends GetxController {
         TLoaders.warningSnackBar(title: 'No Connection', message: 'Please check your internet connection.');
         return;
       }
+
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
       if (googleUser == null) {
         TFullScreenLoader.stopLoading();
         throw const TExceptions('Google Sign-In cancelled');
       }
+
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
       final response = await THttpHelper.post('social-login', {
         'provider': 'google',
         'access_token': googleAuth.accessToken,
       }, skipCsrf: true);
-      TFullScreenLoader.stopLoading();
+
       if (response['success']) {
         await _storage.write(_tokenKey, response['token']);
         await _storage.write(_userIdKey, response['user']['id'].toString());
         await _storage.write(_emailKey, response['user']['email']);
         await _storage.write(_emailVerifiedKey, response['user']['email_verified_at']);
         _lastLoginResponse.value = response;
+
+        // Keep loading while fetching user data and navigating
         await UserController.instance.fetchUserRecord();
         await screenRedirect();
+
+        // Only stop loading after successful navigation
+        TFullScreenLoader.stopLoading();
       } else {
+        TFullScreenLoader.stopLoading();
         throw TExceptions(response['message'] ?? 'Google Sign-In failed', response['statusCode']);
       }
     } catch (e) {
@@ -149,25 +196,33 @@ class AuthenticationRepository extends GetxController {
         TLoaders.warningSnackBar(title: 'No Connection', message: 'Please check your internet connection.');
         return;
       }
+
       final LoginResult result = await FacebookAuth.instance.login();
       if (result.status != LoginStatus.success) {
         TFullScreenLoader.stopLoading();
         throw TExceptions('Facebook Sign-In cancelled or failed');
       }
+
       final response = await THttpHelper.post('social-login', {
         'provider': 'facebook',
         'access_token': result.accessToken!.token,
       }, skipCsrf: true);
-      TFullScreenLoader.stopLoading();
+
       if (response['success']) {
         await _storage.write(_tokenKey, response['token']);
         await _storage.write(_userIdKey, response['user']['id'].toString());
         await _storage.write(_emailKey, response['user']['email']);
         await _storage.write(_emailVerifiedKey, response['user']['email_verified_at']);
         _lastLoginResponse.value = response;
+
+        // Keep loading while fetching user data and navigating
         await UserController.instance.fetchUserRecord();
         await screenRedirect();
+
+        // Only stop loading after successful navigation
+        TFullScreenLoader.stopLoading();
       } else {
+        TFullScreenLoader.stopLoading();
         throw TExceptions(response['message'] ?? 'Facebook Sign-In failed', response['statusCode']);
       }
     } catch (e) {
@@ -268,18 +323,25 @@ class AuthenticationRepository extends GetxController {
     }
   }
 
+  // Updated screenRedirect method
   Future<void> screenRedirect() async {
     print('screenRedirect: Starting screenRedirect');
-    FlutterNativeSplash.remove();
 
     final token = _storage.read(_tokenKey);
-    print('screenRedirect: Token: $token');
+    print('screenRedirect: Token exists: ${token != null}');
 
     if (token != null && token.isNotEmpty) {
       try {
         print('screenRedirect: Fetching user record...');
         final user = await UserController.instance.fetchUserRecord();
         print('screenRedirect: User fetched: ID=${user.id}, EmailVerifiedAt=${user.emailVerifiedAt}');
+
+        // Add a small delay to show the loader
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        // Remove splash screen before navigation
+        FlutterNativeSplash.remove();
+
         if (user.id.isNotEmpty && user.emailVerifiedAt == null) {
           print('screenRedirect: Redirecting to VerifyEmailScreen');
           await Get.offAll(() => VerifyEmailScreen(email: user.email));
@@ -293,7 +355,10 @@ class AuthenticationRepository extends GetxController {
         }
       } catch (e, stackTrace) {
         print('screenRedirect: Error fetching user: $e');
-        print('screenRedirect: Stack trace: $stackTrace');
+
+        // Remove splash screen
+        FlutterNativeSplash.remove();
+
         if (e.toString().contains('Unauthorized') || e.toString().contains('Failed to parse response')) {
           print('screenRedirect: Invalid token, clearing and redirecting to login');
           await _clearStorage();
@@ -311,6 +376,7 @@ class AuthenticationRepository extends GetxController {
       }
     } else {
       print('screenRedirect: No token found, checking isFirstTime');
+      FlutterNativeSplash.remove();
       final isFirstTime = _storage.read('isFirstTime') ?? true;
       if (isFirstTime) {
         print('screenRedirect: First time user, redirecting to OnBoardingScreen');

@@ -1,24 +1,42 @@
-
 class ProductAttributeModel {
-  String? name;
-  final List<String>? values;
+  final String name;
+  final List<String> values;
 
-  ProductAttributeModel({this.name, this.values});
+  ProductAttributeModel({this.name = '', this.values = const []});
 
-  /// Json Format
-  toJson() {
-    return {'Name': name, 'Values': values};
-  }
+  /// Returns an empty instance for clean initialization
+  static ProductAttributeModel empty() => ProductAttributeModel();
 
-  /// Map Json oriented document snapshot from Firebase to Model
-  factory ProductAttributeModel.fromJson(Map<String, dynamic> document) {
-    final data = document;
+  /// Convert model to JSON for API requests
+  Map<String, dynamic> toJson() => {
+    'name': name,
+    'values': values,
+  };
 
-    if (data.isEmpty) return ProductAttributeModel();
-
+  /// Create a ProductAttributeModel from JSON received from the Laravel API
+  factory ProductAttributeModel.fromJson(Map<String, dynamic> json) {
     return ProductAttributeModel(
-      name: data.containsKey('Name') ? data['Name'] : '',
-      values: List<String>.from(data['Values']),
+      name: json['name'] as String? ?? '',
+      values: json['values'] != null ? List<String>.from(json['values']) : [],
     );
   }
+
+  /// Returns a copy of the instance with updated values
+  ProductAttributeModel copyWith({String? name, List<String>? values}) {
+    return ProductAttributeModel(
+      name: name ?? this.name,
+      values: values ?? this.values,
+    );
+  }
+
+  @override
+  String toString() => 'ProductAttributeModel(name: $name, values: $values)';
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+          (other is ProductAttributeModel && other.name == name && other.values == values);
+
+  @override
+  int get hashCode => name.hashCode ^ values.hashCode;
 }
