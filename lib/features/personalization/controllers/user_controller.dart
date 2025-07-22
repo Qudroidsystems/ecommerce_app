@@ -23,16 +23,10 @@ class UserController extends GetxController {
   final hidePassword = false.obs;
   final verifyEmail = TextEditingController();
   final verifyPassword = TextEditingController();
-  final userRepository = Get.put(UserRepository());
+  final userRepository = Get.find<UserRepository>();
   GlobalKey<FormState> reAuthFormKey = GlobalKey<FormState>();
 
-  @override
-  void onInit() {
-    fetchUserRecord();
-    super.onInit();
-  }
-
-  Future<void> fetchUserRecord() async {
+  Future<UserModel> fetchUserRecord() async {
     try {
       print('fetchUserRecord called');
       profileLoading.value = true;
@@ -40,15 +34,13 @@ class UserController extends GetxController {
       print('User data fetched: ${userData.toJson()}');
       user(userData);
       print('User controller updated');
+      return userData;
     } catch (e) {
       print('fetchUserRecord error: $e');
       user(UserModel.empty());
-      // Don't show error snackbar during initial app load
-      // Only show it if this is called manually by user
       if (Get.currentRoute != '/') {
         TLoaders.warningSnackBar(title: 'Error', message: e.toString());
       }
-      // Rethrow the exception so AuthenticationRepository can handle it
       rethrow;
     } finally {
       profileLoading.value = false;
@@ -57,7 +49,6 @@ class UserController extends GetxController {
 
   Future<void> saveUserRecord({UserModel? user}) async {
     try {
-      await fetchUserRecord();
       if (this.user.value.id.isEmpty && user != null) {
         await userRepository.saveUserRecord(user);
         this.user(user);
@@ -135,10 +126,10 @@ class UserController extends GetxController {
       if (user.value.socialProvider != null) {
         await AuthenticationRepository.instance.deleteAccount();
         TFullScreenLoader.stopLoading();
-        Get.offAll(() => const LoginScreen());
+        await Get.offAll(() => const LoginScreen());
       } else {
         TFullScreenLoader.stopLoading();
-        Get.to(() => const ReAuthLoginForm());
+        await Get.to(() => const ReAuthLoginForm());
       }
     } catch (e) {
       TFullScreenLoader.stopLoading();
@@ -165,7 +156,7 @@ class UserController extends GetxController {
       );
       await AuthenticationRepository.instance.deleteAccount();
       TFullScreenLoader.stopLoading();
-      Get.offAll(() => const LoginScreen());
+      await Get.offAll(() => const LoginScreen());
     } catch (e) {
       TFullScreenLoader.stopLoading();
       TLoaders.warningSnackBar(title: 'Oh Snap!', message: e.toString());
