@@ -10,7 +10,8 @@ import '../../../features/authentication/screens/onboarding/onboarding.dart';
 import '../../../features/authentication/screens/signup/verify_email.dart';
 import '../../../features/personalization/controllers/user_controller.dart';
 import '../../../features/personalization/models/user_model.dart';
-import '../../../features/shop/screens/home/home.dart';
+// Import your HomeMenu instead of HomeScreen
+import '../../../home_menu.dart'; // Adjust path as needed
 import '../../../utils/constants/image_strings.dart';
 import '../../../utils/exceptions/exceptions.dart';
 import '../../../utils/helpers/network_manager.dart';
@@ -93,8 +94,6 @@ class AuthenticationRepository extends GetxController {
       TLoaders.errorSnackBar(title: 'Oh Snap!', message: e.toString());
     }
   }
-
-
 
   Future<void> registerWithEmailAndPassword({
     required String email,
@@ -323,7 +322,7 @@ class AuthenticationRepository extends GetxController {
     }
   }
 
-  // Updated screenRedirect method
+  // Updated screenRedirect method - MAIN FIX HERE
   Future<void> screenRedirect() async {
     print('screenRedirect: Starting screenRedirect');
 
@@ -346,8 +345,9 @@ class AuthenticationRepository extends GetxController {
           print('screenRedirect: Redirecting to VerifyEmailScreen');
           await Get.offAll(() => VerifyEmailScreen(email: user.email));
         } else if (user.id.isNotEmpty) {
-          print('screenRedirect: Redirecting to HomeScreen');
-          await Get.offAll(() => const HomeScreen());
+          print('screenRedirect: Redirecting to HomeMenu (with bottom navigation)');
+          // CHANGED: Navigate to HomeMenu instead of HomeScreen
+          await Get.offAll(() => const HomeMenu());
         } else {
           print('screenRedirect: Invalid user data, clearing token');
           await _clearStorage();
@@ -366,8 +366,9 @@ class AuthenticationRepository extends GetxController {
         } else if (_lastLoginResponse.value != null && _lastLoginResponse.value!['user'] != null) {
           final userData = _lastLoginResponse.value!['user'];
           UserController.instance.user.value = UserModel.fromJson(userData);
-          print('screenRedirect: Using login response user data, redirecting to HomeScreen');
-          await Get.offAll(() => const HomeScreen());
+          print('screenRedirect: Using login response user data, redirecting to HomeMenu');
+          // CHANGED: Navigate to HomeMenu instead of HomeScreen
+          await Get.offAll(() => const HomeMenu());
         } else {
           print('screenRedirect: No user data available, clearing token and redirecting to LoginScreen');
           await _clearStorage();
