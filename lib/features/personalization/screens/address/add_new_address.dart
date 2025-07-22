@@ -1,9 +1,9 @@
-import 'package:get/get.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../../../../utils/constants/sizes.dart';
+import '../../../../../utils/validators/validation.dart';
 import '../../../../common/widgets/appbar/appbar.dart';
-import '../../../../utils/validators/validation.dart';
 import '../../controllers/address_controller.dart';
 
 class AddNewAddressScreen extends StatelessWidget {
@@ -13,7 +13,7 @@ class AddNewAddressScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = Get.put(AddressController());
     return Scaffold(
-      appBar: const TAppBar(showBackArrow: true, title: Text('Add new Address')),
+      appBar: const TAppBar(showBackArrow: true, title: Text('Add New Address')),
       body: SingleChildScrollView(
         child: Container(
           padding: const EdgeInsets.all(TSizes.defaultSpace),
@@ -29,8 +29,8 @@ class AddNewAddressScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: TSizes.spaceBtwInputFields),
                 TextFormField(
-                  controller: controller.phoneNumber,
-                  validator: (value) => TValidator.validateEmptyText('Phone Number', value),
+                  controller: controller.phoneNo,
+                  validator: TValidator.validatePhoneNumber,
                   decoration: const InputDecoration(prefixIcon: Icon(Iconsax.mobile), labelText: 'Phone Number'),
                 ),
                 const SizedBox(height: TSizes.spaceBtwInputFields),
@@ -50,8 +50,8 @@ class AddNewAddressScreen extends StatelessWidget {
                     const SizedBox(width: TSizes.spaceBtwInputFields),
                     Expanded(
                       child: TextFormField(
-                        controller: controller.postalCode,
-                        validator: (value) => TValidator.validateEmptyText('Postal Code', value),
+                        controller: controller.zipCode,
+                        validator: TValidator.validateZipCode,
                         expands: false,
                         decoration: const InputDecoration(
                           labelText: 'Postal Code',
@@ -79,6 +79,7 @@ class AddNewAddressScreen extends StatelessWidget {
                     Expanded(
                       child: TextFormField(
                         controller: controller.state,
+                        validator: (value) => TValidator.validateEmptyText('State', value),
                         expands: false,
                         decoration: const InputDecoration(
                           labelText: 'State',
@@ -97,8 +98,10 @@ class AddNewAddressScreen extends StatelessWidget {
                 const SizedBox(height: TSizes.defaultSpace),
                 SizedBox(
                   width: double.infinity,
-                  child:
-                  ElevatedButton(onPressed: () => controller.addNewAddresses(), child: const Text('Save')),
+                  child: ElevatedButton(
+                    onPressed: () => controller.addNewAddress(),
+                    child: const Text('Save'),
+                  ),
                 ),
               ],
             ),

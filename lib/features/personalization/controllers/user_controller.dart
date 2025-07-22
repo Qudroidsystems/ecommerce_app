@@ -1,74 +1,75 @@
-import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../common/widgets/loaders/circular_loader.dart';
 import '../../../data/repositories/authentication/authentication_repository.dart';
 import '../../../data/repositories/user/user_repository.dart';
 import '../../../utils/constants/image_strings.dart';
-import '../../../utils/exceptions/exceptions.dart';
+import '../../../utils/constants/sizes.dart';
+import '../../../utils/helpers/network_manager.dart';
 import '../../../utils/popups/full_screen_loader.dart';
 import '../../../utils/popups/loaders.dart';
+import '../../authentication/screens/login/login.dart';
 import '../models/user_model.dart';
+import '../screens/profile/re_authenticate_user_login_form.dart';
 
 class UserController extends GetxController {
   static UserController get instance => Get.find();
 
-  final userRepository = Get.find<UserRepository>();
-  final authRepository = Get.find<AuthenticationRepository>();
-  final user = UserModel.empty().obs;
+  Rx<UserModel> user = UserModel.empty().obs;
   final imageUploading = false.obs;
   final profileLoading = false.obs;
-  final hidePassword = true.obs;
+  final profileImageUrl = ''.obs;
+  final hidePassword = false.obs;
   final verifyEmail = TextEditingController();
   final verifyPassword = TextEditingController();
-  final reAuthFormKey = GlobalKey<FormState>();
+  final userRepository = Get.put(UserRepository());
+  GlobalKey<FormState> reAuthFormKey = GlobalKey<FormState>();
 
   @override
   void onInit() {
-    super.onInit();
     fetchUserRecord();
+    super.onInit();
   }
 
-  /// Fetch user record
   Future<void> fetchUserRecord() async {
     try {
+      print('fetchUserRecord called');
       profileLoading.value = true;
       final userData = await userRepository.fetchUserDetails();
-      user.value = userData;
+      print('User data fetched: ${userData.toJson()}');
+      user(userData);
+      print('User controller updated');
     } catch (e) {
-      user.value = UserModel.empty();
-      TLoaders.errorSnackBar(
-        title: 'Error',
-        message: e is TExceptions ? e.message : 'Failed to fetch user data: $e',
-      );
+      print('fetchUserRecord error: $e');
+      user(UserModel.empty());
+      // Don't show error snackbar during initial app load
+      // Only show it if this is called manually by user
+      if (Get.currentRoute != '/') {
+        TLoaders.warningSnackBar(title: 'Error', message: e.toString());
+      }
+      // Rethrow the exception so AuthenticationRepository can handle it
+      rethrow;
     } finally {
       profileLoading.value = false;
     }
   }
 
-  /// Save user record from API response
-  Future<void> saveUserRecord({Map<String, dynamic>? userResponse}) async {
+  Future<void> saveUserRecord({UserModel? user}) async {
     try {
-      profileLoading.value = true;
-      if (userResponse != null) {
-        final newUser = UserModel.fromJson(userResponse['user']);
-        user.value = newUser;
-        await userRepository.saveUserRecord(newUser);
-      } else {
-        throw TExceptions('No user data provided');
+      await fetchUserRecord();
+      if (this.user.value.id.isEmpty && user != null) {
+        await userRepository.saveUserRecord(user);
+        this.user(user);
       }
     } catch (e) {
-      TLoaders.errorSnackBar(
-        title: 'Error',
-        message: e is TExceptions ? e.message : 'Failed to save user record: $e',
+      TLoaders.warningSnackBar(
+        title: 'Data not saved',
+        message: 'Something went wrong while saving your information. You can re-save your data in your Profile.',
       );
-    } finally {
-      profileLoading.value = false;
     }
   }
 
-  /// Upload profile picture
   Future<void> uploadUserProfilePicture() async {
     try {
       final image = await ImagePicker().pickImage(
@@ -78,134 +79,128 @@ class UserController extends GetxController {
         maxWidth: 512,
       );
       if (image == null) {
-        TLoaders.warningSnackBar(title: 'No Image Selected', message: 'Please select an image.');
+        TLoaders.warningSnackBar(title: 'No Image', message: 'No image selected.');
         return;
       }
-
       imageUploading.value = true;
-
-      final imageUrl = await userRepository.uploadProfilePicture(image);
-      user.value = user.value.copyWith(profileImage: imageUrl);
-      await userRepository.updateSingleField({'profile_image': imageUrl});
-
-      TLoaders.successSnackBar(title: 'Success', message: 'Profile picture updated successfully');
-    } catch (e) {
-      TLoaders.errorSnackBar(
-        title: 'Error',
-        message: e is TExceptions ? e.message : 'Failed to upload profile picture: $e',
+      final uploadedImage = await userRepository.uploadImage('Users/Profile', image);
+      profileImageUrl.value = uploadedImage;
+      user.value = user.value.copyWith(profileImage: uploadedImage);
+      await userRepository.updateSingleField({'profile_image': uploadedImage});
+      user.refresh();
+      TLoaders.successSnackBar(
+        title: 'Congratulations',
+        message: 'Your Profile Image has been updated!',
       );
+    } catch (e) {
+      TLoaders.errorSnackBar(title: 'Oh Snap', message: e.toString());
     } finally {
       imageUploading.value = false;
     }
   }
 
-  /// Update gender
-  Future<void> updateGender(String gender) async {
-    try {
-      profileLoading.value = true;
-      await userRepository.updateSingleField({'gender': gender});
-      user.value = user.value.copyWith(gender: gender);
-      TLoaders.successSnackBar(title: 'Success', message: 'Gender updated successfully');
-    } catch (e) {
-      TLoaders.errorSnackBar(
-        title: 'Error',
-        message: e is TExceptions ? e.message : 'Failed to update gender: $e',
-      );
-    } finally {
-      profileLoading.value = false;
-    }
+  void deleteAccountWarningPopup() {
+    Get.defaultDialog(
+      contentPadding: const EdgeInsets.all(TSizes.md),
+      title: 'Delete Account',
+      middleText:
+      'Are you sure you want to delete your account permanently? This action is not reversible and all of your data will be removed permanently.',
+      confirm: ElevatedButton(
+        onPressed: () async => deleteUserAccount(),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.red,
+          side: const BorderSide(color: Colors.red),
+        ),
+        child: const Padding(
+          padding: EdgeInsets.symmetric(horizontal: TSizes.lg),
+          child: Text('Delete'),
+        ),
+      ),
+      cancel: OutlinedButton(
+        child: const Text('Cancel'),
+        onPressed: () => Navigator.of(Get.overlayContext!).pop(),
+      ),
+    );
   }
 
-  /// Update date of birth
-  Future<void> updateDateOfBirth(DateTime dateOfBirth) async {
+  Future<void> deleteUserAccount() async {
     try {
-      profileLoading.value = true;
-      await userRepository.updateSingleField({'date_of_birth': dateOfBirth.toIso8601String()});
-      user.value = user.value.copyWith(dateOfBirth: dateOfBirth);
-      TLoaders.successSnackBar(title: 'Success', message: 'Date of birth updated successfully');
-    } catch (e) {
-      TLoaders.errorSnackBar(
-        title: 'Error',
-        message: e is TExceptions ? e.message : 'Failed to update date of birth: $e',
-      );
-    } finally {
-      profileLoading.value = false;
-    }
-  }
-
-  /// Re-authenticate user
-  Future<void> reAuthenticateEmailAndPasswordUser() async {
-    try {
-      if (!reAuthFormKey.currentState!.validate()) {
-        TLoaders.warningSnackBar(title: 'Validation Error', message: 'Please fill in all required fields.');
+      TFullScreenLoader.openLoadingDialog('Processing', TImages.docerAnimation);
+      final isConnected = await NetworkManager.instance.isConnected();
+      if (!isConnected) {
+        TFullScreenLoader.stopLoading();
+        TLoaders.warningSnackBar(title: 'No Connection', message: 'Please check your internet connection.');
         return;
       }
+      if (user.value.socialProvider != null) {
+        await AuthenticationRepository.instance.deleteAccount();
+        TFullScreenLoader.stopLoading();
+        Get.offAll(() => const LoginScreen());
+      } else {
+        TFullScreenLoader.stopLoading();
+        Get.to(() => const ReAuthLoginForm());
+      }
+    } catch (e) {
+      TFullScreenLoader.stopLoading();
+      TLoaders.warningSnackBar(title: 'Oh Snap!', message: e.toString());
+    }
+  }
 
-      TFullScreenLoader.openLoadingDialog('Re-authenticating...', TImages.docerAnimation);
-
-      final response = await authRepository.reAuthenticateWithEmailAndPassword(
+  Future<void> reAuthenticateEmailAndPasswordUser() async {
+    try {
+      TFullScreenLoader.openLoadingDialog('Processing', TImages.docerAnimation);
+      final isConnected = await NetworkManager.instance.isConnected();
+      if (!isConnected) {
+        TFullScreenLoader.stopLoading();
+        TLoaders.warningSnackBar(title: 'No Connection', message: 'Please check your internet connection.');
+        return;
+      }
+      if (!reAuthFormKey.currentState!.validate()) {
+        TFullScreenLoader.stopLoading();
+        return;
+      }
+      await AuthenticationRepository.instance.reAuthenticateWithEmailAndPassword(
         verifyEmail.text.trim(),
         verifyPassword.text.trim(),
       );
-
+      await AuthenticationRepository.instance.deleteAccount();
       TFullScreenLoader.stopLoading();
-
-      if (response['success']) {
-        TLoaders.successSnackBar(title: 'Success', message: 'Re-authentication successful');
-        Get.back(); // Return to previous screen (e.g., ChangeName)
-      } else {
-        throw TExceptions(response['message'] ?? 'Re-authentication failed');
-      }
+      Get.offAll(() => const LoginScreen());
     } catch (e) {
       TFullScreenLoader.stopLoading();
-      TLoaders.errorSnackBar(
-        title: 'Error',
-        message: e is TExceptions ? e.message : 'Re-authentication failed: $e',
-      );
+      TLoaders.warningSnackBar(title: 'Oh Snap!', message: e.toString());
     }
   }
 
-  /// Logout
   Future<void> logout() async {
     try {
-      await authRepository.logout();
-      user.value = UserModel.empty(); // Clear user data
-    } catch (e) {
-      TLoaders.errorSnackBar(
-        title: 'Error',
-        message: e is TExceptions ? e.message : 'Logout failed: $e',
-      );
-    }
-  }
-
-  /// Delete account warning popup
-  Future<void> deleteAccountWarningPopup() async {
-    Get.defaultDialog(
-      title: 'Delete Account',
-      middleText: 'Are you sure you want to delete your account permanently? This action is not reversible.',
-      confirm: ElevatedButton(
-        onPressed: () async {
-          try {
-            TFullScreenLoader.openLoadingDialog('Deleting account...', TImages.docerAnimation);
-            await userRepository.deleteAccount();
-            await authRepository.logout();
-            user.value = UserModel.empty(); // Clear user data
-            TFullScreenLoader.stopLoading();
-            TLoaders.successSnackBar(title: 'Success', message: 'Account deleted successfully');
-          } catch (e) {
-            TFullScreenLoader.stopLoading();
-            TLoaders.errorSnackBar(
-              title: 'Error',
-              message: e is TExceptions ? e.message : 'Failed to delete account: $e',
+      Get.defaultDialog(
+        contentPadding: const EdgeInsets.all(TSizes.md),
+        title: 'Logout',
+        middleText: 'Are you sure you want to Logout?',
+        confirm: ElevatedButton(
+          child: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: TSizes.lg),
+            child: Text('Confirm'),
+          ),
+          onPressed: () async {
+            Navigator.of(Get.overlayContext!).pop();
+            Get.defaultDialog(
+              title: '',
+              barrierDismissible: false,
+              backgroundColor: Colors.transparent,
+              content: const TCircularLoader(),
             );
-          }
-        },
-        child: const Text('Delete'),
-      ),
-      cancel: TextButton(
-        onPressed: () => Get.back(),
-        child: const Text('Cancel'),
-      ),
-    );
+            await AuthenticationRepository.instance.logout();
+          },
+        ),
+        cancel: OutlinedButton(
+          child: const Text('Cancel'),
+          onPressed: () => Navigator.of(Get.overlayContext!).pop(),
+        ),
+      );
+    } catch (e) {
+      TLoaders.errorSnackBar(title: 'Oh Snap', message: e.toString());
+    }
   }
 }

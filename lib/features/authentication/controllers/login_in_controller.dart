@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:flutter/material.dart';
 import 'package:get_storage/get_storage.dart';
+
 import '../../../data/repositories/authentication/authentication_repository.dart';
 import '../../../utils/constants/image_strings.dart';
 import '../../../utils/helpers/network_manager.dart';
@@ -17,7 +18,7 @@ class LoginController extends GetxController {
   final localStorage = GetStorage();
   final email = TextEditingController();
   final password = TextEditingController();
-  final userController = Get.find<UserController>();
+  final userController = Get.put(UserController());
   GlobalKey<FormState> loginFormKey = GlobalKey<FormState>();
 
   @override
@@ -37,7 +38,7 @@ class LoginController extends GetxController {
       final isConnected = await NetworkManager.instance.isConnected();
       if (!isConnected) {
         TFullScreenLoader.stopLoading();
-        TLoaders.errorSnackBar(title: 'No Internet', message: 'Please check your internet connection.');
+        TLoaders.customToast(message: 'No Internet Connection');
         return;
       }
 
@@ -51,35 +52,25 @@ class LoginController extends GetxController {
       if (rememberMe.value) {
         localStorage.write('REMEMBER_ME_EMAIL', email.text.trim());
         localStorage.write('REMEMBER_ME_PASSWORD', password.text.trim());
-      } else {
-        localStorage.remove('REMEMBER_ME_EMAIL');
-        localStorage.remove('REMEMBER_ME_PASSWORD');
       }
 
       // Login user using Email & Password Authentication
-      final response = await AuthenticationRepository.instance.loginWithEmailAndPassword(
+      await AuthenticationRepository.instance.loginWithEmailAndPassword(
         email.text.trim(),
         password.text.trim(),
       );
 
-      // Save user data
-      if (response['success']) {
-        await userController.saveUserRecord(userResponse: response);
-      }
+      // Fetch user data
+      await userController.fetchUserRecord();
 
       // Remove Loader
       TFullScreenLoader.stopLoading();
 
       // Redirect
-      try {
-        await AuthenticationRepository.instance.screenRedirect();
-      } catch (e) {
-        TLoaders.errorSnackBar(title: 'Navigation Error', message: 'Failed to redirect: $e');
-        Get.offAllNamed('/login'); // Fallback to login screen
-      }
+      await AuthenticationRepository.instance.screenRedirect();
     } catch (e) {
       TFullScreenLoader.stopLoading();
-      TLoaders.errorSnackBar(title: 'Oh Snap!', message: e.toString());
+      TLoaders.errorSnackBar(title: 'Oh Snap', message: e.toString());
     }
   }
 
@@ -87,42 +78,29 @@ class LoginController extends GetxController {
   Future<void> googleSignIn() async {
     try {
       // Start Loading
-      TFullScreenLoader.openLoadingDialog('Logging you in with Google...', TImages.docerAnimation);
+      TFullScreenLoader.openLoadingDialog('Logging you in...', TImages.docerAnimation);
 
       // Check Internet Connectivity
       final isConnected = await NetworkManager.instance.isConnected();
       if (!isConnected) {
         TFullScreenLoader.stopLoading();
-        TLoaders.errorSnackBar(title: 'No Internet', message: 'Please check your internet connection.');
         return;
       }
 
       // Google Authentication
-      final response = await AuthenticationRepository.instance.signInWithGoogle();
-      if (response == null) {
-        TFullScreenLoader.stopLoading();
-        TLoaders.warningSnackBar(title: 'Cancelled', message: 'Google Sign-In was cancelled.');
-        return;
-      }
+      await AuthenticationRepository.instance.signInWithGoogle();
 
-      // Save user data
-      if (response['success']) {
-        await userController.saveUserRecord(userResponse: response);
-      }
+      // Fetch user data
+      await userController.fetchUserRecord();
 
       // Remove Loader
       TFullScreenLoader.stopLoading();
 
       // Redirect
-      try {
-        await AuthenticationRepository.instance.screenRedirect();
-      } catch (e) {
-        TLoaders.errorSnackBar(title: 'Navigation Error', message: 'Failed to redirect: $e');
-        Get.offAllNamed('/login'); // Fallback to login screen
-      }
+      await AuthenticationRepository.instance.screenRedirect();
     } catch (e) {
       TFullScreenLoader.stopLoading();
-      TLoaders.errorSnackBar(title: 'Oh Snap!', message: e.toString());
+      TLoaders.errorSnackBar(title: 'Oh Snap', message: e.toString());
     }
   }
 
@@ -130,42 +108,29 @@ class LoginController extends GetxController {
   Future<void> facebookSignIn() async {
     try {
       // Start Loading
-      TFullScreenLoader.openLoadingDialog('Logging you in with Facebook...', TImages.docerAnimation);
+      TFullScreenLoader.openLoadingDialog('Logging you in...', TImages.docerAnimation);
 
       // Check Internet Connectivity
       final isConnected = await NetworkManager.instance.isConnected();
       if (!isConnected) {
         TFullScreenLoader.stopLoading();
-        TLoaders.errorSnackBar(title: 'No Internet', message: 'Please check your internet connection.');
         return;
       }
 
       // Facebook Authentication
-      final response = await AuthenticationRepository.instance.signInWithFacebook();
-      if (response == null) {
-        TFullScreenLoader.stopLoading();
-        TLoaders.warningSnackBar(title: 'Cancelled', message: 'Facebook Sign-In was cancelled.');
-        return;
-      }
+      await AuthenticationRepository.instance.signInWithFacebook();
 
-      // Save user data
-      if (response['success']) {
-        await userController.saveUserRecord(userResponse: response);
-      }
+      // Fetch user data
+      await userController.fetchUserRecord();
 
       // Remove Loader
       TFullScreenLoader.stopLoading();
 
       // Redirect
-      try {
-        await AuthenticationRepository.instance.screenRedirect();
-      } catch (e) {
-        TLoaders.errorSnackBar(title: 'Navigation Error', message: 'Failed to redirect: $e');
-        Get.offAllNamed('/login'); // Fallback to login screen
-      }
+      await AuthenticationRepository.instance.screenRedirect();
     } catch (e) {
       TFullScreenLoader.stopLoading();
-      TLoaders.errorSnackBar(title: 'Oh Snap!', message: e.toString());
+      TLoaders.errorSnackBar(title: 'Oh Snap', message: e.toString());
     }
   }
 }

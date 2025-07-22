@@ -6,8 +6,6 @@ import 'package:get_storage/get_storage.dart';
 
 import 'app.dart';
 import 'data/repositories/authentication/authentication_repository.dart';
-import '../../../utils/http/http_client.dart';
-import 'data/repositories/user/user_repository.dart';
 
 /// -- Entry point of Flutter App
 Future<void> main() async {
@@ -23,9 +21,7 @@ Future<void> main() async {
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
 
   /// -- Initialize Authentication Repository
-
   Get.put(AuthenticationRepository());
-
 
   /// -- Main App Starts here...
   runApp(const App());

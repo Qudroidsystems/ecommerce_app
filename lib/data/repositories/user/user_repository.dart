@@ -1,154 +1,105 @@
+import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:get_storage/get_storage.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import '../../../features/personalization/models/user_model.dart';
-import '../../../utils/exceptions/exceptions.dart';
-import '../../../utils/http/http_client.dart' as httpClient;
-import '../authentication/authentication_repository.dart';
+import '../../../utils/exceptions/format_exceptions.dart';
+import '../../../utils/exceptions/platform_exceptions.dart';
+import '../../../utils/http/http_client.dart';
 
+
+/// Repository class for user-related operations.
 class UserRepository extends GetxController {
   static UserRepository get instance => Get.find();
 
-  final _httpClient = Get.find<httpClient.THttpHelper>();
-  final deviceStorage = GetStorage();
-
-  /// Fetch user details
-  Future<UserModel> fetchUserDetails() async {
-    try {
-      final token = Get.find<AuthenticationRepository>().deviceStorage.read('auth_token');
-      if (token == null) {
-        throw const TExceptions('No authentication token found');
-      }
-      final response = await httpClient.THttpHelper.get('user', headers: {'Authorization': 'Bearer $token'});
-      if (!response['success']) {
-        throw TExceptions(response['message'] ?? 'Failed to fetch user details');
-      }
-      final user = UserModel.fromJson(response['user']);
-      await saveUserRecord(user); // Store user locally
-      return user;
-    } catch (e) {
-      throw TExceptions('Failed to fetch user details: $e');
-    }
-  }
-
-  /// Save user record to local storage
+  /// Function to save user data to Laravel backend.
   Future<void> saveUserRecord(UserModel user) async {
     try {
-      await deviceStorage.write('USER', user.toJson());
+      await THttpHelper.post('user', user.toJson());
     } catch (e) {
-      throw TExceptions('Failed to save user record: $e');
+      throw _handleException(e);
     }
   }
 
-  /// Get stored user
-  UserModel? getStoredUser() {
+  /// Function to fetch user details from Laravel backend.
+  Future<UserModel> fetchUserDetails() async {
     try {
-      final userJson = deviceStorage.read('USER');
-      if (userJson == null) return null;
-      return UserModel.fromJson(userJson);
-    } catch (e) {
-      throw TExceptions('Failed to retrieve stored user: $e');
-    }
-  }
-
-  /// Update user record
-  Future<void> updateUserRecord(UserModel user) async {
-    try {
-      final token = Get.find<AuthenticationRepository>().deviceStorage.read('auth_token');
-      if (token == null) {
-        throw TExceptions('No authentication token found');
-      }
-      final response = await httpClient.THttpHelper.put(
-        'user',
-        user.toJson(),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-      if (!response['success']) {
-        throw TExceptions(response['message'] ?? 'Failed to update user record');
-      }
-      await saveUserRecord(user); // Update local storage
-    } catch (e) {
-      throw TExceptions('Failed to update user record: $e');
-    }
-  }
-
-  /// Update single field
-  Future<void> updateSingleField(Map<String, dynamic> data) async {
-    try {
-      final token = Get.find<AuthenticationRepository>().deviceStorage.read('auth_token');
-      if (token == null) {
-        throw TExceptions('No authentication token found');
-      }
-      final response = await httpClient.THttpHelper.patch(
-        'user',
-        data,
-        headers: {'Authorization': 'Bearer $token'},
-      );
-      if (!response['success']) {
-        throw TExceptions(response['message'] ?? 'Failed to update user field');
-      }
-    } catch (e) {
-      throw TExceptions('Failed to update user field: $e');
-    }
-  }
-
-  /// Upload profile picture
-  Future<String> uploadProfilePicture(XFile image) async {
-    try {
-      final token = Get.find<AuthenticationRepository>().deviceStorage.read('auth_token');
-      if (token == null) {
-        throw TExceptions('No authentication token found');
-      }
-      final formData = <String, dynamic>{};
-      if (kIsWeb) {
-        final bytes = await image.readAsBytes();
-        formData['profile_image'] = httpClient.MultipartFile(
-          bytes,
-          filename: image.name,
-          contentType: image.mimeType,
-        );
+      final response = await THttpHelper.get('user');
+      if (response['success']) {
+        return UserModel.fromJson(response['user']);
       } else {
-        final file = File(image.path);
-        formData['profile_image'] = httpClient.MultipartFile(
-          file,
-          filename: image.name,
-          contentType: image.mimeType,
-        );
+        throw response['message'];
       }
-      await httpClient.THttpHelper.fetchCsrfToken();
-      final response = await httpClient.THttpHelper.postMultipart(
-        'user/profile-image',
-        formData,
-        headers: {'Authorization': 'Bearer $token'},
-      );
-      if (!response['success']) {
-        throw TExceptions(response['message'] ?? 'Failed to upload profile image');
-      }
-      return response['data']['profile_image_url'] ?? '';
     } catch (e) {
-      throw TExceptions('Failed to upload profile image: $e');
+      throw _handleException(e);
     }
   }
 
-  /// Remove user record
-  Future<void> deleteAccount() async {
+  /// Function to update user data in Laravel backend.
+  Future<void> updateUserDetails(UserModel updatedUser) async {
     try {
-      final token = Get.find<AuthenticationRepository>().deviceStorage.read('auth_token');
-      if (token == null) {
-        throw TExceptions('No authentication token found');
-      }
-      final response = await httpClient.THttpHelper.delete(
-        'user',
-        headers: {'Authorization': 'Bearer $token'},
-      );
-      if (!response['success']) {
-        throw TExceptions(response['message'] ?? 'Failed to delete account');
-      }
-      await deviceStorage.remove('USER');
+      await THttpHelper.put('user', updatedUser.toJson());
     } catch (e) {
-      throw TExceptions('Failed to delete account: $e');
+      throw _handleException(e);
+    }
+  }
+
+  /// Update any field in specific Users endpoint
+  Future<void> updateSingleField(Map<String, dynamic> json) async {
+    try {
+      await THttpHelper.patch('user', json);
+    } catch (e) {
+      throw _handleException(e);
+    }
+  }
+
+  /// Upload any Image
+  Future<String> uploadImage(String path, XFile image) async {
+    try {
+      // Fetch CSRF token before making the multipart request
+      await THttpHelper.fetchCsrfToken();
+
+      final uri = Uri.parse('${THttpHelper.baseUrl}/user/profile-picture');
+      final request = http.MultipartRequest('POST', uri);
+      request.files.add(await http.MultipartFile.fromPath('file', image.path));
+
+      // Get headers with Bearer token
+      final headers = await THttpHelper.getHeaders();
+      request.headers.addAll(headers);
+
+      final response = await request.send();
+      final responseBody = await response.stream.bytesToString();
+      final jsonResponse = jsonDecode(responseBody);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return jsonResponse['url']; // Adjust based on your Laravel response
+      } else {
+        throw jsonResponse['message'] ?? 'Failed to upload image: ${response.statusCode}';
+      }
+    } catch (e) {
+      throw _handleException(e);
+    }
+  }
+
+  /// Function to remove user data from Laravel backend.
+  Future<void> removeUserRecord(String userId) async {
+    try {
+      await THttpHelper.delete('user');
+    } catch (e) {
+      throw _handleException(e);
+    }
+  }
+
+  /// Handle exceptions
+  String _handleException(dynamic e) {
+    if (e is FormatException) {
+      return 'Invalid format. Please check your input.';
+    } else if (e is PlatformException) {
+      return 'Platform error: ${e.message}';
+    } else {
+      return e.toString();
     }
   }
 }

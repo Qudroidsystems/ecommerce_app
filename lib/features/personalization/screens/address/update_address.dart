@@ -33,7 +33,7 @@ class UpdateAddressScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: TSizes.spaceBtwInputFields),
                 TextFormField(
-                  controller: controller.phoneNumber,
+                  controller: controller.phoneNo,
                   validator: (value) => TValidator.validateEmptyText('Phone Number', value),
                   decoration: const InputDecoration(prefixIcon: Icon(Iconsax.mobile), labelText: 'Phone Number'),
                 ),
@@ -54,7 +54,7 @@ class UpdateAddressScreen extends StatelessWidget {
                     const SizedBox(width: TSizes.spaceBtwInputFields),
                     Expanded(
                       child: TextFormField(
-                        controller: controller.postalCode,
+                        controller: controller.zipCode,
                         validator: (value) => TValidator.validateEmptyText('Postal Code', value),
                         expands: false,
                         decoration: const InputDecoration(

@@ -32,7 +32,7 @@ class ForgetPasswordController extends GetxController {
       }
 
       // Send EMail to Reset Password
-      await AuthenticationRepository.instance.sendPasswordResetEmail(email.text.trim());
+      //await AuthenticationRepository.instance.sendPasswordResetEmail(email.text.trim());
 
       // Remove Loader
       TFullScreenLoader.stopLoading();
@@ -57,7 +57,7 @@ class ForgetPasswordController extends GetxController {
       if (!isConnected) {TFullScreenLoader.stopLoading(); return;}
 
       // Send EMail to Reset Password
-      await AuthenticationRepository.instance.sendPasswordResetEmail(email.trim());
+     // await AuthenticationRepository.instance.sendPasswordResetEmail(email.trim());
 
       // Remove Loader
       TFullScreenLoader.stopLoading();

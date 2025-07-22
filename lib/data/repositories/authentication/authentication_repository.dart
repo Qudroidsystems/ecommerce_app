@@ -1,257 +1,282 @@
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import '../../../features/personalization/models/user_model.dart';
+import '../../../features/authentication/screens/login/login.dart';
+import '../../../features/authentication/screens/signup/verify_email.dart';
+import '../../../features/personalization/controllers/user_controller.dart';
+import '../../../features/shop/screens/home/home.dart';
+import '../../../utils/constants/image_strings.dart';
 import '../../../utils/exceptions/exceptions.dart';
-import '../../../utils/http/http_client.dart' as httpClient;
-import '../user/user_repository.dart';
-
+import '../../../utils/helpers/network_manager.dart';
+import '../../../utils/http/http_client.dart';
+import '../../../utils/popups/full_screen_loader.dart';
+import '../../../utils/popups/loaders.dart';
 
 class AuthenticationRepository extends GetxController {
   static AuthenticationRepository get instance => Get.find();
 
-
-  final _httpClient = Get.put(httpClient.THttpHelper());
-  final deviceStorage = GetStorage();
-  final userRepository = Get.put(UserRepository());
-  final _googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
+  final _storage = GetStorage();
 
   @override
   void onReady() {
-    screenRedirect();
     super.onReady();
+    // Add a small delay to ensure all dependencies are ready
+    Future.delayed(const Duration(milliseconds: 500), () {
+      screenRedirect();
+    });
   }
 
-  /// Get the authenticated user ID
-  String get getUserID {
-    final user = userRepository.getStoredUser();
-    if (user == null || user.id.isEmpty) {
-      throw const TExceptions('No authenticated user found');
-    }
-    return user.id;
-  }
-
-  /// Check authentication status and redirect
-  Future<void> screenRedirect() async {
-    final token = deviceStorage.read('auth_token');
-    if (token != null) {
-      try {
-        final user = await userRepository.fetchUserDetails();
-        if (user.emailVerifiedAt == null) {
-          Get.offAllNamed('/verify-email');
-        } else {
-          Get.offAllNamed('/home');
-        }
-      } catch (e) {
-        Get.offAllNamed('/login');
+  Future<void> loginWithEmailAndPassword(String email, String password) async {
+    try {
+      TFullScreenLoader.openLoadingDialog('Logging in...', TImages.docerAnimation);
+      final isConnected = await NetworkManager.instance.isConnected();
+      if (!isConnected) {
+        TFullScreenLoader.stopLoading();
+        TLoaders.warningSnackBar(title: 'No Connection', message: 'Please check your internet connection.');
+        return;
       }
-    } else {
-      Get.offAllNamed('/login');
+      final response = await THttpHelper.post('login', {
+        'email': email,
+        'password': password,
+      }, skipCsrf: true);
+      TFullScreenLoader.stopLoading();
+      if (response['success']) {
+        await _storage.write('auth_token', response['token']);
+        await UserController.instance.fetchUserRecord();
+        await screenRedirect();
+      } else {
+        throw TExceptions(response['message'] ?? 'Login failed', response['statusCode']);
+      }
+    } catch (e) {
+      TFullScreenLoader.stopLoading();
+      TLoaders.errorSnackBar(title: 'Oh Snap!', message: e.toString());
     }
   }
 
-  /// Register with email and password
-  Future<Map<String, dynamic>> registerWithEmailAndPassword({
+  Future<void> registerWithEmailAndPassword({
     required String email,
     required String password,
     required String firstName,
     required String lastName,
-    String? phoneNumber,
-    String? gender,
-    String? dateOfBirth,
+    required String phoneNumber,
   }) async {
     try {
-      final response = await httpClient.THttpHelper.post('register', {
+      TFullScreenLoader.openLoadingDialog('Registering...', TImages.docerAnimation);
+      final isConnected = await NetworkManager.instance.isConnected();
+      if (!isConnected) {
+        TFullScreenLoader.stopLoading();
+        TLoaders.warningSnackBar(title: 'No Connection', message: 'Please check your internet connection.');
+        return;
+      }
+      final response = await THttpHelper.post('register', {
         'email': email,
         'password': password,
         'first_name': firstName,
         'last_name': lastName,
-        if (phoneNumber != null) 'phone_number': phoneNumber,
-        if (gender != null) 'gender': gender,
-        if (dateOfBirth != null) 'date_of_birth': dateOfBirth,
-      });
-
-      if (!response['success']) {
-        throw TExceptions(response['message'] ?? 'Registration failed');
+        'phone_number': phoneNumber,
+      }, skipCsrf: true);
+      TFullScreenLoader.stopLoading();
+      if (response['success']) {
+        await _storage.write('auth_token', response['token']);
+        Get.to(() => VerifyEmailScreen(email: email));
+      } else {
+        throw TExceptions(response['message'] ?? 'Registration failed', response['statusCode']);
       }
-
-      final token = response['token'];
-      deviceStorage.write('auth_token', token);
-      await userRepository.saveUserRecord(UserModel.fromJson(response['user']));
-
-      return response;
     } catch (e) {
-      throw TExceptions('Registration failed: $e');
+      TFullScreenLoader.stopLoading();
+      TLoaders.errorSnackBar(title: 'Oh Snap!', message: e.toString());
     }
   }
 
-  /// Login with email and password
-  Future<Map<String, dynamic>> loginWithEmailAndPassword(String email, String password) async {
+  Future<void> signInWithGoogle() async {
     try {
-      final response = await httpClient.THttpHelper.post('login', {
-        'email': email,
-        'password': password,
-      });
-
-      if (!response['success']) {
-        throw TExceptions(response['message'] ?? 'Login failed');
+      TFullScreenLoader.openLoadingDialog('Signing in with Google...', TImages.docerAnimation);
+      final isConnected = await NetworkManager.instance.isConnected();
+      if (!isConnected) {
+        TFullScreenLoader.stopLoading();
+        TLoaders.warningSnackBar(title: 'No Connection', message: 'Please check your internet connection.');
+        return;
       }
-
-      final token = response['token'];
-      deviceStorage.write('auth_token', token);
-      await userRepository.saveUserRecord(UserModel.fromJson(response['user']));
-
-      return response;
-    } catch (e) {
-      throw TExceptions('Login failed: $e');
-    }
-  }
-
-  /// Google Sign-In
-  Future<Map<String, dynamic>?> signInWithGoogle() async {
-    try {
-      final user = await _googleSignIn.signIn();
-      if (user == null) {
-        throw TExceptions('Google Sign-In cancelled by user');
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) {
+        TFullScreenLoader.stopLoading();
+        throw TExceptions('Google Sign-In cancelled');
       }
-
-      final googleAuth = await user.authentication;
-      final accessToken = googleAuth.accessToken;
-      if (accessToken == null) {
-        throw TExceptions('Failed to obtain Google access token');
-      }
-
-      final response = await httpClient.THttpHelper.post('social-login', {
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final response = await THttpHelper.post('social-login', {
         'provider': 'google',
-        'access_token': accessToken,
-      });
-
-      if (!response['success']) {
-        throw TExceptions(response['message'] ?? 'Google Sign-In failed');
+        'access_token': googleAuth.accessToken,
+      }, skipCsrf: true);
+      TFullScreenLoader.stopLoading();
+      if (response['success']) {
+        await _storage.write('auth_token', response['token']);
+        await UserController.instance.fetchUserRecord();
+        await screenRedirect();
+      } else {
+        throw TExceptions(response['message'] ?? 'Google Sign-In failed', response['statusCode']);
       }
-
-      final token = response['token'];
-      deviceStorage.write('auth_token', token);
-      await userRepository.saveUserRecord(UserModel.fromJson(response['user']));
-
-      return response;
     } catch (e) {
-      throw TExceptions('Google Sign-In failed: $e');
+      TFullScreenLoader.stopLoading();
+      TLoaders.errorSnackBar(title: 'Oh Snap!', message: e.toString());
     }
   }
 
-  /// Facebook Sign-In
-  Future<Map<String, dynamic>?> signInWithFacebook() async {
+  Future<void> signInWithFacebook() async {
     try {
-      final loginResult = await FacebookAuth.instance.login(permissions: ['email', 'public_profile']);
-      if (loginResult.status != LoginStatus.success) {
-        throw TExceptions('Facebook Sign-In cancelled or failed: ${loginResult.message}');
+      TFullScreenLoader.openLoadingDialog('Signing in with Facebook...', TImages.docerAnimation);
+      final isConnected = await NetworkManager.instance.isConnected();
+      if (!isConnected) {
+        TFullScreenLoader.stopLoading();
+        TLoaders.warningSnackBar(title: 'No Connection', message: 'Please check your internet connection.');
+        return;
       }
-
-      final accessToken = loginResult.accessToken?.token;
-      if (accessToken == null) {
-        throw TExceptions('Failed to obtain Facebook access token');
+      final LoginResult result = await FacebookAuth.instance.login();
+      if (result.status != LoginStatus.success) {
+        TFullScreenLoader.stopLoading();
+        throw TExceptions('Facebook Sign-In cancelled or failed');
       }
-
-      final response = await httpClient.THttpHelper.post('social-login', {
+      final response = await THttpHelper.post('social-login', {
         'provider': 'facebook',
-        'access_token': accessToken,
-      });
-
-      if (!response['success']) {
-        throw TExceptions(response['message'] ?? 'Facebook Sign-In failed');
+        'access_token': result.accessToken!.token,
+      }, skipCsrf: true);
+      TFullScreenLoader.stopLoading();
+      if (response['success']) {
+        await _storage.write('auth_token', response['token']);
+        await UserController.instance.fetchUserRecord();
+        await screenRedirect();
+      } else {
+        throw TExceptions(response['message'] ?? 'Facebook Sign-In failed', response['statusCode']);
       }
-
-      final token = response['token'];
-      deviceStorage.write('auth_token', token);
-      await userRepository.saveUserRecord(UserModel.fromJson(response['user']));
-
-      return response;
     } catch (e) {
-      throw TExceptions('Facebook Sign-In failed: $e');
+      TFullScreenLoader.stopLoading();
+      TLoaders.errorSnackBar(title: 'Oh Snap!', message: e.toString());
     }
   }
 
-  /// Re-authenticate for sensitive actions
-  Future<Map<String, dynamic>> reAuthenticateWithEmailAndPassword(String email, String password) async {
+  Future<void> sendPasswordResetEmail(String email) async {
     try {
-      final response = await httpClient.THttpHelper.post('login', {
-        'email': email,
-        'password': password,
-      });
-
-      if (!response['success']) {
-        throw TExceptions(response['message'] ?? 'Re-authentication failed');
+      TFullScreenLoader.openLoadingDialog('Sending password reset email...', TImages.docerAnimation);
+      final isConnected = await NetworkManager.instance.isConnected();
+      if (!isConnected) {
+        TFullScreenLoader.stopLoading();
+        TLoaders.warningSnackBar(title: 'No Connection', message: 'Please check your internet connection.');
+        return;
       }
-
-      return response;
+      final response = await THttpHelper.post('password/email', {
+        'email': email,
+      }, skipCsrf: true);
+      TFullScreenLoader.stopLoading();
+      if (response['success']) {
+        TLoaders.successSnackBar(
+          title: 'Success',
+          message: response['message'] ?? 'Password reset link sent to your email.',
+        );
+      } else {
+        throw TExceptions(response['message'] ?? 'Failed to send password reset email', response['statusCode']);
+      }
     } catch (e) {
-      throw TExceptions('Re-authentication failed: $e');
+      TFullScreenLoader.stopLoading();
+      TLoaders.errorSnackBar(title: 'Oh Snap!', message: e.toString());
     }
   }
 
-  /// Send email verification notification
   Future<void> sendEmailVerification() async {
     try {
-      final response = await httpClient.THttpHelper.post('email/verification-notification', {}, headers: {
-        'Authorization': 'Bearer ${deviceStorage.read('auth_token')}',
-      });
-
-      if (!response['success']) {
-        throw TExceptions(response['message'] ?? 'Failed to send verification email');
-      }
+      await THttpHelper.post('email/verification-notification', {});
     } catch (e) {
       throw TExceptions('Failed to send verification email: $e');
     }
   }
 
-  /// Check email verification status
-  Future<Map<String, dynamic>> checkEmailVerificationStatus() async {
+  Future<void> reAuthenticateWithEmailAndPassword(String email, String password) async {
     try {
-      final response = await httpClient.THttpHelper.get('user', headers: {
-        'Authorization': 'Bearer ${deviceStorage.read('auth_token')}',
-      });
-
-      if (!response['success']) {
-        throw TExceptions(response['message'] ?? 'Failed to check verification status');
+      TFullScreenLoader.openLoadingDialog('Re-authenticating...', TImages.docerAnimation);
+      final isConnected = await NetworkManager.instance.isConnected();
+      if (!isConnected) {
+        TFullScreenLoader.stopLoading();
+        TLoaders.warningSnackBar(title: 'No Connection', message: 'Please check your internet connection.');
+        return;
       }
-
-      await userRepository.saveUserRecord(UserModel.fromJson(response['user']));
-      return response;
+      final response = await THttpHelper.post('login', {
+        'email': email,
+        'password': password,
+      }, skipCsrf: true);
+      TFullScreenLoader.stopLoading();
+      if (!response['success']) {
+        throw TExceptions(response['message'] ?? 'Re-authentication failed', response['statusCode']);
+      }
     } catch (e) {
-      throw TExceptions('Failed to check verification status: $e');
+      TFullScreenLoader.stopLoading();
+      throw TExceptions('Re-authentication failed: $e');
     }
   }
 
-  /// Send password reset email
-  Future<void> sendPasswordResetEmail(String email) async {
+  Future<void> deleteAccount() async {
     try {
-      final response = await httpClient.THttpHelper.post('password/email', {'email': email});
-
-      if (!response['success']) {
-        throw TExceptions(response['message'] ?? 'Failed to send password reset email');
-      }
+      TFullScreenLoader.openLoadingDialog('Deleting account...', TImages.docerAnimation);
+      await THttpHelper.delete('user');
+      await _storage.remove('auth_token');
+      TFullScreenLoader.stopLoading();
     } catch (e) {
-      throw TExceptions('Failed to send password reset email: $e');
+      TFullScreenLoader.stopLoading();
+      throw TExceptions('Failed to delete account: $e');
     }
   }
 
-  /// Logout
   Future<void> logout() async {
     try {
-      final response = await httpClient.THttpHelper.post('logout', {}, headers: {
-        'Authorization': 'Bearer ${deviceStorage.read('auth_token')}',
-      });
-
-      if (!response['success']) {
-        throw TExceptions(response['message'] ?? 'Logout failed');
-      }
-
-      deviceStorage.remove('auth_token');
-      Get.offAllNamed('/login');
+      TFullScreenLoader.openLoadingDialog('Logging out...', TImages.docerAnimation);
+      await THttpHelper.post('logout', {});
+      await _storage.remove('auth_token');
+      TFullScreenLoader.stopLoading();
+      Get.offAll(() => const LoginScreen());
     } catch (e) {
+      TFullScreenLoader.stopLoading();
       throw TExceptions('Logout failed: $e');
     }
   }
+
+  Future<void> screenRedirect() async {
+    try {
+      // Hide the splash screen
+      FlutterNativeSplash.remove();
+
+      // Check if user has auth token
+      final token = _storage.read('auth_token');
+
+      if (token != null && token.isNotEmpty) {
+        // User has token, try to fetch user data
+        try {
+          await UserController.instance.fetchUserRecord();
+          final user = UserController.instance.user.value;
+
+          if (user.id.isNotEmpty && user.emailVerifiedAt == null) {
+            // User exists but email not verified
+            Get.offAll(() => VerifyEmailScreen(email: user.email));
+          } else if (user.id.isNotEmpty) {
+            // User exists and email verified
+            Get.offAll(() => const HomeScreen());
+          } else {
+            // Token invalid, go to login
+            await _storage.remove('auth_token');
+            Get.offAll(() => const LoginScreen());
+          }
+        } catch (e) {
+          // Error fetching user, token might be invalid
+          await _storage.remove('auth_token');
+          Get.offAll(() => const LoginScreen());
+        }
+      } else {
+        // No token, go to login
+        Get.offAll(() => const LoginScreen());
+      }
+    } catch (e) {
+      // Fallback to login screen
+      Get.offAll(() => const LoginScreen());
+    }
+  }
+
+  String get getUserID => UserController.instance.user.value.id;
 }

@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+
 import '../../../data/repositories/authentication/authentication_repository.dart';
 import '../../../utils/constants/image_strings.dart';
 import '../../../utils/helpers/network_manager.dart';
-import '../../../utils/popups/full_screen_loader.dart';
-import '../../../utils/popups/loaders.dart';
 import '../../personalization/controllers/user_controller.dart';
 import '../../personalization/models/user_model.dart';
 import '../screens/signup/verify_email.dart';
+import '../../../utils/popups/full_screen_loader.dart';
+import '../../../utils/popups/loaders.dart';
 
 class SignupController extends GetxController {
   static SignupController get instance => Get.find();
@@ -21,11 +22,9 @@ class SignupController extends GetxController {
   final password = TextEditingController();
   final firstName = TextEditingController();
   final phoneNumber = TextEditingController();
-  final gender = TextEditingController();
-  final dateOfBirth = TextEditingController();
   GlobalKey<FormState> signupFormKey = GlobalKey<FormState>();
 
-  /// -- SIGNUP
+  /// SIGNUP
   Future<void> signup() async {
     try {
       // Start Loading
@@ -35,7 +34,6 @@ class SignupController extends GetxController {
       final isConnected = await NetworkManager.instance.isConnected();
       if (!isConnected) {
         TFullScreenLoader.stopLoading();
-        TLoaders.errorSnackBar(title: 'No Internet', message: 'Please check your internet connection.');
         return;
       }
 
@@ -49,36 +47,45 @@ class SignupController extends GetxController {
       if (!privacyPolicy.value) {
         TFullScreenLoader.stopLoading();
         TLoaders.warningSnackBar(
-            title: 'Accept Privacy Policy',
-            message: 'In order to create account, you must have to read and accept the Privacy Policy & Terms of Use.');
+          title: 'Accept Privacy Policy',
+          message: 'In order to create an account, you must accept the Privacy Policy & Terms of Use.',
+        );
         return;
       }
 
-      // Register user with Laravel API
-      final response = await AuthenticationRepository.instance.registerWithEmailAndPassword(
+      // Register user using Laravel API
+      await AuthenticationRepository.instance.registerWithEmailAndPassword(
         email: email.text.trim(),
         password: password.text.trim(),
         firstName: firstName.text.trim(),
         lastName: lastName.text.trim(),
-        phoneNumber: phoneNumber.text.trim().isNotEmpty ? phoneNumber.text.trim() : null,
-        gender: gender.text.trim().isNotEmpty ? gender.text.trim() : null,
-        dateOfBirth: dateOfBirth.text.trim().isNotEmpty ? dateOfBirth.text.trim() : null,
+        phoneNumber: phoneNumber.text.trim(),
       );
 
       // Save user data
-      if (response['success']) {
-        await UserController.instance.saveUserRecord(userResponse: response);
-      }
+      final newUser = UserModel(
+        id: AuthenticationRepository.instance.getUserID,
+        firstName: firstName.text.trim(),
+        lastName: lastName.text.trim(),
+        username: username.text.trim(),
+        email: email.text.trim(),
+        phoneNumber: phoneNumber.text.trim(),
+        profileImage: '',
+      );
+
+      await UserController.instance.saveUserRecord(user: newUser);
 
       // Remove Loader
       TFullScreenLoader.stopLoading();
 
       // Show Success Message
       TLoaders.successSnackBar(
-          title: 'Congratulations', message: 'Your account has been created! Verify email to continue.');
+        title: 'Congratulations',
+        message: 'Your account has been created! Verify email to continue.',
+      );
 
       // Move to Verify Email Screen
-      Get.to(() => VerifyEmailScreen(email: email.text.trim()));
+      Get.to(() => const VerifyEmailScreen());
     } catch (e) {
       TFullScreenLoader.stopLoading();
       TLoaders.errorSnackBar(title: 'Oh Snap!', message: e.toString());

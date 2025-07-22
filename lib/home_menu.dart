@@ -34,7 +34,7 @@ class HomeMenu extends StatelessWidget {
           ],
         ),
       ),
-      body: Obx(() => controller.screens[controller.selectedMenu.value]),
+      // body: Obx(() => controller.screens[controller.selectedMenu.value]),
     );
   }
 }
@@ -44,5 +44,5 @@ class AppScreenController extends GetxController {
 
   final Rx<int> selectedMenu = 0.obs;
 
-  final screens = [const HomeScreen(), const StoreScreen(), const FavouriteScreen(), const SettingsScreen()];
+  // final screens = [const HomeScreen(), const StoreScreen(), const FavouriteScreen(), const SettingsScreen()];
 }

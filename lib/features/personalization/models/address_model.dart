@@ -1,14 +1,14 @@
 class AddressModel {
-  String id;
-  String userId;
+  final String id;
+  final String userId;
   final String name;
   final String street;
   final String city;
   final String state;
-  final String postalCode;
+  final String zipCode;
   final String country;
-  final String phoneNumber;
-  bool selectedAddress;
+  final String phoneNo;
+  final bool selectedAddress;
 
   AddressModel({
     required this.id,
@@ -17,9 +17,9 @@ class AddressModel {
     required this.street,
     required this.city,
     required this.state,
-    required this.postalCode,
+    required this.zipCode,
     required this.country,
-    required this.phoneNumber,
+    required this.phoneNo,
     required this.selectedAddress,
   });
 
@@ -31,10 +31,10 @@ class AddressModel {
       street: json['street'] ?? '',
       city: json['city'] ?? '',
       state: json['state'] ?? '',
-      postalCode: json['postal_code'] ?? json['zipCode'] ?? '',
+      zipCode: json['zipCode'] ?? json['postal_code'] ?? '',
       country: json['country'] ?? '',
-      phoneNumber: json['phone_number'] ?? json['phoneNo'] ?? '',
-      selectedAddress: json['is_default'] ?? json['selectedAddress'] ?? false,
+      phoneNo: json['phoneNo'] ?? json['phone_number'] ?? '',
+      selectedAddress: json['selectedAddress'] ?? json['is_default'] ?? false,
     );
   }
 
@@ -46,9 +46,9 @@ class AddressModel {
       'street': street,
       'city': city,
       'state': state,
-      'postal_code': postalCode,
+      'postal_code': zipCode,
       'country': country,
-      'phone_number': phoneNumber,
+      'phone_number': phoneNo,
       'is_default': selectedAddress,
     };
   }
@@ -60,9 +60,9 @@ class AddressModel {
     String? street,
     String? city,
     String? state,
-    String? postalCode,
+    String? zipCode,
     String? country,
-    String? phoneNumber,
+    String? phoneNo,
     bool? selectedAddress,
   }) {
     return AddressModel(
@@ -72,9 +72,9 @@ class AddressModel {
       street: street ?? this.street,
       city: city ?? this.city,
       state: state ?? this.state,
-      postalCode: postalCode ?? this.postalCode,
+      zipCode: zipCode ?? this.zipCode,
       country: country ?? this.country,
-      phoneNumber: phoneNumber ?? this.phoneNumber,
+      phoneNo: phoneNo ?? this.phoneNo,
       selectedAddress: selectedAddress ?? this.selectedAddress,
     );
   }
@@ -86,9 +86,9 @@ class AddressModel {
     street: '',
     city: '',
     state: '',
-    postalCode: '',
+    zipCode: '',
     country: '',
-    phoneNumber: '',
+    phoneNo: '',
     selectedAddress: false,
   );
 
@@ -102,9 +102,9 @@ class AddressModel {
               street == other.street &&
               city == other.city &&
               state == other.state &&
-              postalCode == other.postalCode &&
+              zipCode == other.zipCode &&
               country == other.country &&
-              phoneNumber == other.phoneNumber &&
+              phoneNo == other.phoneNo &&
               selectedAddress == other.selectedAddress;
 
   @override
@@ -115,9 +115,9 @@ class AddressModel {
     street,
     city,
     state,
-    postalCode,
+    zipCode,
     country,
-    phoneNumber,
+    phoneNo,
     selectedAddress,
   );
 }

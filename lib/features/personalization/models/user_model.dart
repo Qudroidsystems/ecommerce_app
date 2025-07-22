@@ -1,3 +1,6 @@
+import 'package:cwt_ecommerce_app/features/personalization/models/address_model.dart';
+import 'package:flutter/material.dart';
+
 class UserModel {
   final String id;
   final String firstName;
@@ -7,12 +10,10 @@ class UserModel {
   final String? phoneNumber;
   final String? profileImage;
   final String? socialProvider;
-  final String? gender;
-  final DateTime? dateOfBirth;
   final DateTime? emailVerifiedAt;
   final DateTime? createdAt;
   final DateTime? updatedAt;
-  final List<Map<String, dynamic>> addresses;
+  final List<AddressModel> addresses;
 
   UserModel({
     required this.id,
@@ -23,15 +24,13 @@ class UserModel {
     this.phoneNumber,
     this.profileImage,
     this.socialProvider,
-    this.gender,
-    this.dateOfBirth,
     this.emailVerifiedAt,
     this.createdAt,
     this.updatedAt,
     this.addresses = const [],
   });
 
-  String get fullName => '$firstName $lastName';
+  String get fullName => '$firstName $lastName'.trim();
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
@@ -43,12 +42,13 @@ class UserModel {
       phoneNumber: json['phone_number'],
       profileImage: json['profile_image'],
       socialProvider: json['social_provider'],
-      gender: json['gender'],
-      dateOfBirth: json['date_of_birth'] != null ? DateTime.parse(json['date_of_birth']) : null,
       emailVerifiedAt: json['email_verified_at'] != null ? DateTime.parse(json['email_verified_at']) : null,
       createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
       updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at']) : null,
-      addresses: (json['addresses'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [],
+      addresses: (json['addresses'] as List<dynamic>?)
+          ?.map((e) => AddressModel.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+          [],
     );
   }
 
@@ -62,14 +62,19 @@ class UserModel {
       'phone_number': phoneNumber,
       'profile_image': profileImage,
       'social_provider': socialProvider,
-      'gender': gender,
-      'date_of_birth': dateOfBirth?.toIso8601String(),
       'email_verified_at': emailVerifiedAt?.toIso8601String(),
       'created_at': createdAt?.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
-      'addresses': addresses,
     };
   }
+
+  static UserModel empty() => UserModel(
+    id: '',
+    firstName: '',
+    lastName: '',
+    username: '',
+    email: '',
+  );
 
   UserModel copyWith({
     String? id,
@@ -80,12 +85,10 @@ class UserModel {
     String? phoneNumber,
     String? profileImage,
     String? socialProvider,
-    String? gender,
-    DateTime? dateOfBirth,
     DateTime? emailVerifiedAt,
     DateTime? createdAt,
     DateTime? updatedAt,
-    List<Map<String, dynamic>>? addresses,
+    List<AddressModel>? addresses,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -96,8 +99,6 @@ class UserModel {
       phoneNumber: phoneNumber ?? this.phoneNumber,
       profileImage: profileImage ?? this.profileImage,
       socialProvider: socialProvider ?? this.socialProvider,
-      gender: gender ?? this.gender,
-      dateOfBirth: dateOfBirth ?? this.dateOfBirth,
       emailVerifiedAt: emailVerifiedAt ?? this.emailVerifiedAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -105,11 +106,36 @@ class UserModel {
     );
   }
 
-  static UserModel empty() => UserModel(
-    id: '',
-    firstName: '',
-    lastName: '',
-    username: '',
-    email: '',
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+          other is UserModel &&
+              id == other.id &&
+              firstName == other.firstName &&
+              lastName == other.lastName &&
+              username == other.username &&
+              email == other.email &&
+              phoneNumber == other.phoneNumber &&
+              profileImage == other.profileImage &&
+              socialProvider == other.socialProvider &&
+              emailVerifiedAt == other.emailVerifiedAt &&
+              createdAt == other.createdAt &&
+              updatedAt == other.updatedAt &&
+              addresses == other.addresses;
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    firstName,
+    lastName,
+    username,
+    email,
+    phoneNumber,
+    profileImage,
+    socialProvider,
+    emailVerifiedAt,
+    createdAt,
+    updatedAt,
+    addresses,
   );
 }

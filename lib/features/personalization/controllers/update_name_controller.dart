@@ -8,6 +8,7 @@ import '../../../utils/popups/loaders.dart';
 import '../screens/profile/profile.dart';
 import 'user_controller.dart';
 
+/// Controller to manage user-related functionality.
 class UpdateNameController extends GetxController {
   static UpdateNameController get instance => Get.find();
 
@@ -17,7 +18,7 @@ class UpdateNameController extends GetxController {
   final userRepository = Get.put(UserRepository());
   GlobalKey<FormState> updateUserNameFormKey = GlobalKey<FormState>();
 
-  /// Initialize user data when screen appears
+  /// init user data when Home Screen appears
   @override
   void onInit() {
     initializeNames();
@@ -48,19 +49,13 @@ class UpdateNameController extends GetxController {
         return;
       }
 
-      // Update user's first & last name in the Laravel API
-      Map<String, dynamic> name = {
-        'first_name': firstName.text.trim(),
-        'last_name': lastName.text.trim(),
-      };
+      // Update user's first & last name in the Firebase Firestore
+      Map<String, dynamic> name = {'FirstName': firstName.text.trim(), 'LastName': lastName.text.trim()};
       await userRepository.updateSingleField(name);
 
       // Update the Rx User value
-      userController.user.value = userController.user.value.copyWith(
-        firstName: firstName.text.trim(),
-        lastName: lastName.text.trim(),
-      );
-      userController.user.refresh();
+      // userController.user.value.firstName = firstName.text.trim();
+      // userController.user.value.lastName = lastName.text.trim();
 
       // Remove Loader
       TFullScreenLoader.stopLoading();
@@ -68,7 +63,7 @@ class UpdateNameController extends GetxController {
       // Show Success Message
       TLoaders.successSnackBar(title: 'Congratulations', message: 'Your Name has been updated.');
 
-      // Move to Profile screen
+      // Move to previous screen.
       Get.off(() => const ProfileScreen());
     } catch (e) {
       TFullScreenLoader.stopLoading();

@@ -34,7 +34,7 @@
 //     lastName: 'with T',
 //     email: 'support@codingwithT.com',
 //     phoneNumber: '+14155552671',
-//     profileImage: TImages.user,
+//     profilePicture: TImages.user,
 //     addresses: [
 //       AddressModel(
 //         id: '1',

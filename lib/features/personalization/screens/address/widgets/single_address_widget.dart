@@ -87,7 +87,7 @@ class TSingleAddress extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: TSizes.sm / 2),
-                            Text(address.phoneNumber, maxLines: 1, overflow: TextOverflow.ellipsis),
+                            // Text(address.formattedPhoneNo, maxLines: 1, overflow: TextOverflow.ellipsis),
                             const SizedBox(height: TSizes.sm / 2),
                             Expanded(
                               child: Text(

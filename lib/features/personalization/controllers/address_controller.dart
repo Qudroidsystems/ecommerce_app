@@ -5,10 +5,10 @@ import '../../../data/repositories/address/address_repository.dart';
 import '../../../data/repositories/authentication/authentication_repository.dart';
 import '../../../utils/constants/image_strings.dart';
 import '../../../utils/constants/sizes.dart';
-import '../../../utils/helpers/cloud_helper_functions.dart';
 import '../../../utils/helpers/network_manager.dart';
 import '../../../utils/popups/full_screen_loader.dart';
 import '../../../utils/popups/loaders.dart';
+import '../../../utils/validators/validation.dart';
 import '../models/address_model.dart';
 import '../screens/address/add_new_address.dart';
 import '../screens/address/widgets/single_address_widget.dart';
@@ -17,12 +17,12 @@ class AddressController extends GetxController {
   static AddressController get instance => Get.find();
 
   final name = TextEditingController();
-  final phoneNumber = TextEditingController();
   final street = TextEditingController();
-  final postalCode = TextEditingController();
   final city = TextEditingController();
   final state = TextEditingController();
   final country = TextEditingController();
+  final zipCode = TextEditingController();
+  final phoneNo = TextEditingController();
   GlobalKey<FormState> addressFormKey = GlobalKey<FormState>();
 
   RxBool refreshData = true.obs;
@@ -46,23 +46,22 @@ class AddressController extends GetxController {
     }
   }
 
-  /// Select an address (shipping or billing)
+  /// Select an Address
   Future<void> selectAddress({required AddressModel newSelectedAddress, bool isBillingAddress = false}) async {
     try {
       if (!isBillingAddress) {
         if (selectedAddress.value.id.isNotEmpty) {
           await addressRepository.updateSelectedField(
-            AuthenticationRepository.instance.getUserID,
-            selectedAddress.value.id,
-            false,
+            addressId: selectedAddress.value.id,
+            selected: false,
           );
         }
-        newSelectedAddress = newSelectedAddress.copyWith(selectedAddress: true);
-        selectedAddress.value = newSelectedAddress;
+
+        selectedAddress.value = newSelectedAddress.copyWith(selectedAddress: true);
+
         await addressRepository.updateSelectedField(
-          AuthenticationRepository.instance.getUserID,
-          selectedAddress.value.id,
-          true,
+          addressId: newSelectedAddress.id,
+          selected: true,
         );
       } else {
         selectedBillingAddress.value = newSelectedAddress;
@@ -72,46 +71,63 @@ class AddressController extends GetxController {
     }
   }
 
-  /// Add new address
-  Future<void> addNewAddresses() async {
+  /// Add New Address
+  Future<void> addNewAddress() async {
     try {
       TFullScreenLoader.openLoadingDialog('Storing Address...', TImages.docerAnimation);
       final isConnected = await NetworkManager.instance.isConnected();
       if (!isConnected) {
         TFullScreenLoader.stopLoading();
+        TLoaders.customToast(message: 'No Internet Connection');
         return;
       }
       if (!addressFormKey.currentState!.validate()) {
         TFullScreenLoader.stopLoading();
         return;
       }
+      final phoneError = TValidator.validatePhoneNumber(phoneNo.text.trim());
+      if (phoneError != null) {
+        TFullScreenLoader.stopLoading();
+        TLoaders.errorSnackBar(title: 'Invalid Phone Number', message: phoneError);
+        return;
+      }
+      final zipError = TValidator.validateZipCode(zipCode.text.trim());
+      if (zipError != null) {
+        TFullScreenLoader.stopLoading();
+        TLoaders.errorSnackBar(title: 'Invalid Zip Code', message: zipError);
+        return;
+      }
+
       final address = AddressModel(
         id: '',
-        userId: AuthenticationRepository.instance.getUserID,
         name: name.text.trim(),
-        phoneNumber: phoneNumber.text.trim(),
+        userId: AuthenticationRepository.instance.getUserID,
         street: street.text.trim(),
         city: city.text.trim(),
         state: state.text.trim(),
-        postalCode: postalCode.text.trim(),
+        zipCode: zipCode.text.trim(),
         country: country.text.trim(),
+        phoneNo: phoneNo.text.trim(),
         selectedAddress: true,
       );
-      final id = await addressRepository.addAddress(address, AuthenticationRepository.instance.getUserID);
-      address.id = id;
-      await selectAddress(newSelectedAddress: address);
+
+      final id = await addressRepository.addAddress(address);
+      final updatedAddress = address.copyWith(id: id);
+
+      await selectAddress(newSelectedAddress: updatedAddress);
       TFullScreenLoader.stopLoading();
       TLoaders.successSnackBar(title: 'Congratulations', message: 'Your address has been saved successfully.');
+
       refreshData.toggle();
       resetFormFields();
-      Navigator.of(Get.context!).pop();
+      Get.back();
     } catch (e) {
       TFullScreenLoader.stopLoading();
-      TLoaders.errorSnackBar(title: 'Address not found', message: e.toString());
+      TLoaders.errorSnackBar(title: 'Error', message: e.toString());
     }
   }
 
-  /// Show addresses in a ModalBottomSheet at checkout
+  /// Show address selection popup
   Future<dynamic> selectNewAddressPopup({required BuildContext context, bool isBillingAddress = false}) {
     return showModalBottomSheet(
       context: context,
@@ -124,24 +140,31 @@ class AddressController extends GetxController {
               const TSectionHeading(title: 'Select Address', showActionButton: false),
               const SizedBox(height: TSizes.spaceBtwItems),
               FutureBuilder(
-                future: allUserAddresses(),
-                builder: (_, snapshot) => TCloudHelperFunctions.checkMultiRecordState(
-                  snapshot: snapshot,
-                  loader: const Center(child: CircularProgressIndicator()),
-                  error: Center(child: Text('Error: ${snapshot.error}')),
-                  nothingFound: const Center(child: Text('No addresses found')),
-                ) ?? ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: snapshot.data!.length,
-                  itemBuilder: (_, index) => TSingleAddress(
-                    address: snapshot.data![index],
-                    isBillingAddress: isBillingAddress,
-                    onTap: () async {
-                      await selectAddress(newSelectedAddress: snapshot.data![index], isBillingAddress: isBillingAddress);
-                      Get.back();
-                    },
-                  ),
-                ),
+                future: addressRepository.fetchUserAddresses(),
+                builder: (_, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  }
+                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return const Center(child: Text('No addresses found'));
+                  }
+
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: snapshot.data!.length,
+                    itemBuilder: (_, index) => TSingleAddress(
+                      address: snapshot.data![index],
+                      isBillingAddress: isBillingAddress,
+                      onTap: () async {
+                        await selectAddress(newSelectedAddress: snapshot.data![index], isBillingAddress: isBillingAddress);
+                        Get.back();
+                      },
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: TSizes.defaultSpace),
               SizedBox(
@@ -158,78 +181,81 @@ class AddressController extends GetxController {
     );
   }
 
-  /// Initialize values for updating an address
-  void initUpdateAddressValues(AddressModel address) {
-    name.text = address.name;
-    phoneNumber.text = address.phoneNumber;
-    street.text = address.street;
-    postalCode.text = address.postalCode;
-    city.text = address.city;
-    state.text = address.state;
-    country.text = address.country;
-  }
-
-  /// Update an existing address
+  /// Update existing address
   Future<void> updateAddress(AddressModel oldAddress) async {
     try {
       TFullScreenLoader.openLoadingDialog('Updating your Address...', TImages.docerAnimation);
+
       final isConnected = await NetworkManager.instance.isConnected();
       if (!isConnected) {
         TFullScreenLoader.stopLoading();
+        TLoaders.customToast(message: 'No Internet Connection');
         return;
       }
+
       if (!addressFormKey.currentState!.validate()) {
         TFullScreenLoader.stopLoading();
         return;
       }
+      final phoneError = TValidator.validatePhoneNumber(phoneNo.text.trim());
+      if (phoneError != null) {
+        TFullScreenLoader.stopLoading();
+        TLoaders.errorSnackBar(title: 'Invalid Phone Number', message: phoneError);
+        return;
+      }
+      final zipError = TValidator.validateZipCode(zipCode.text.trim());
+      if (zipError != null) {
+        TFullScreenLoader.stopLoading();
+        TLoaders.errorSnackBar(title: 'Invalid Zip Code', message: zipError);
+        return;
+      }
+
       final address = AddressModel(
         id: oldAddress.id,
         userId: AuthenticationRepository.instance.getUserID,
         name: name.text.trim(),
-        phoneNumber: phoneNumber.text.trim(),
+        phoneNo: phoneNo.text.trim(),
         street: street.text.trim(),
         city: city.text.trim(),
         state: state.text.trim(),
-        postalCode: postalCode.text.trim(),
+        zipCode: zipCode.text.trim(),
         country: country.text.trim(),
         selectedAddress: oldAddress.selectedAddress,
       );
-      await addressRepository.updateAddress(address, AuthenticationRepository.instance.getUserID);
+
+      await addressRepository.updateAddress(address);
       TFullScreenLoader.stopLoading();
-      TLoaders.successSnackBar(title: 'Congratulations', message: 'Your address has been updated successfully.');
+      TLoaders.successSnackBar(title: 'Success', message: 'Your address has been updated successfully.');
+
       refreshData.toggle();
       resetFormFields();
-      Navigator.of(Get.context!).pop();
+      Get.back();
     } catch (e) {
       TFullScreenLoader.stopLoading();
       TLoaders.errorSnackBar(title: 'Error Updating Address', message: e.toString());
     }
   }
 
-  /// Delete an address
-  Future<void> deleteAddress(String addressId) async {
-    try {
-      TFullScreenLoader.openLoadingDialog('Deleting Address...', TImages.docerAnimation);
-      final userId = AuthenticationRepository.instance.getUserID;
-      await addressRepository.deleteAddress(userId, addressId);
-      TFullScreenLoader.stopLoading();
-      TLoaders.successSnackBar(title: 'Success', message: 'Address deleted successfully.');
-      refreshData.toggle();
-    } catch (e) {
-      TFullScreenLoader.stopLoading();
-      TLoaders.errorSnackBar(title: 'Error Deleting Address', message: e.toString());
-    }
+  /// Initialize form fields for updating an address
+  void initUpdateAddressValues(AddressModel address) {
+    name.text = address.name;
+    phoneNo.text = address.phoneNo;
+    street.text = address.street;
+    zipCode.text = address.zipCode;
+    city.text = address.city;
+    state.text = address.state;
+    country.text = address.country;
   }
 
   /// Reset form fields
   void resetFormFields() {
     name.clear();
-    phoneNumber.clear();
     street.clear();
-    postalCode.clear();
     city.clear();
     state.clear();
     country.clear();
+    zipCode.clear();
+    phoneNo.clear();
     addressFormKey.currentState?.reset();
   }
 }
