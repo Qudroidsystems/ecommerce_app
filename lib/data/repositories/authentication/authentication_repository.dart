@@ -6,6 +6,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import '../../../features/authentication/screens/login/login.dart';
 import '../../../features/authentication/screens/signup/verify_email.dart';
 import '../../../features/personalization/controllers/user_controller.dart';
+import '../../../features/personalization/models/user_model.dart';
 import '../../../features/shop/screens/home/home.dart';
 import '../../../utils/constants/image_strings.dart';
 import '../../../utils/exceptions/exceptions.dart';
@@ -14,17 +15,22 @@ import '../../../utils/http/http_client.dart';
 import '../../../utils/popups/full_screen_loader.dart';
 import '../../../utils/popups/loaders.dart';
 
+
 class AuthenticationRepository extends GetxController {
   static AuthenticationRepository get instance => Get.find();
 
   final _storage = GetStorage();
+  final _isRedirecting = false.obs;
+  final _lastLoginResponse = Rxn<Map<String, dynamic>>();
 
   @override
   void onReady() {
     super.onReady();
-    // Add a small delay to ensure all dependencies are ready
+    // Delay to ensure controllers are initialized
     Future.delayed(const Duration(milliseconds: 500), () {
-      screenRedirect();
+      if (!_isRedirecting.value) {
+        screenRedirect();
+      }
     });
   }
 
@@ -44,6 +50,7 @@ class AuthenticationRepository extends GetxController {
       TFullScreenLoader.stopLoading();
       if (response['success']) {
         await _storage.write('auth_token', response['token']);
+        _lastLoginResponse.value = response;
         await UserController.instance.fetchUserRecord();
         await screenRedirect();
       } else {
@@ -80,7 +87,8 @@ class AuthenticationRepository extends GetxController {
       TFullScreenLoader.stopLoading();
       if (response['success']) {
         await _storage.write('auth_token', response['token']);
-        Get.to(() => VerifyEmailScreen(email: email));
+        _lastLoginResponse.value = response;
+        Get.offAll(() => VerifyEmailScreen(email: email));
       } else {
         throw TExceptions(response['message'] ?? 'Registration failed', response['statusCode']);
       }
@@ -112,6 +120,7 @@ class AuthenticationRepository extends GetxController {
       TFullScreenLoader.stopLoading();
       if (response['success']) {
         await _storage.write('auth_token', response['token']);
+        _lastLoginResponse.value = response;
         await UserController.instance.fetchUserRecord();
         await screenRedirect();
       } else {
@@ -144,6 +153,7 @@ class AuthenticationRepository extends GetxController {
       TFullScreenLoader.stopLoading();
       if (response['success']) {
         await _storage.write('auth_token', response['token']);
+        _lastLoginResponse.value = response;
         await UserController.instance.fetchUserRecord();
         await screenRedirect();
       } else {
@@ -218,7 +228,9 @@ class AuthenticationRepository extends GetxController {
       TFullScreenLoader.openLoadingDialog('Deleting account...', TImages.docerAnimation);
       await THttpHelper.delete('user');
       await _storage.remove('auth_token');
+      _lastLoginResponse.value = null;
       TFullScreenLoader.stopLoading();
+      Get.offAll(() => const LoginScreen());
     } catch (e) {
       TFullScreenLoader.stopLoading();
       throw TExceptions('Failed to delete account: $e');
@@ -230,6 +242,7 @@ class AuthenticationRepository extends GetxController {
       TFullScreenLoader.openLoadingDialog('Logging out...', TImages.docerAnimation);
       await THttpHelper.post('logout', {});
       await _storage.remove('auth_token');
+      _lastLoginResponse.value = null;
       TFullScreenLoader.stopLoading();
       Get.offAll(() => const LoginScreen());
     } catch (e) {
@@ -239,42 +252,68 @@ class AuthenticationRepository extends GetxController {
   }
 
   Future<void> screenRedirect() async {
+    if (_isRedirecting.value) {
+      print('screenRedirect: Already redirecting, skipping...');
+      return;
+    }
+    _isRedirecting.value = true;
     try {
-      // Hide the splash screen
-      FlutterNativeSplash.remove();
-
-      // Check if user has auth token
       final token = _storage.read('auth_token');
-
+      print('screenRedirect: Token: $token');
       if (token != null && token.isNotEmpty) {
-        // User has token, try to fetch user data
         try {
+          print('screenRedirect: Fetching user record...');
           await UserController.instance.fetchUserRecord();
           final user = UserController.instance.user.value;
-
+          print('screenRedirect: User fetched: ID=${user.id}, EmailVerifiedAt=${user.emailVerifiedAt}');
+          FlutterNativeSplash.remove(); // Move splash removal before navigation
           if (user.id.isNotEmpty && user.emailVerifiedAt == null) {
-            // User exists but email not verified
+            print('screenRedirect: Redirecting to VerifyEmailScreen');
             Get.offAll(() => VerifyEmailScreen(email: user.email));
           } else if (user.id.isNotEmpty) {
-            // User exists and email verified
+            print('screenRedirect: Redirecting to HomeScreen');
             Get.offAll(() => const HomeScreen());
           } else {
-            // Token invalid, go to login
+            print('screenRedirect: Invalid user data, clearing token');
             await _storage.remove('auth_token');
+            _lastLoginResponse.value = null;
             Get.offAll(() => const LoginScreen());
           }
-        } catch (e) {
-          // Error fetching user, token might be invalid
-          await _storage.remove('auth_token');
-          Get.offAll(() => const LoginScreen());
+        } catch (e, stackTrace) {
+          print('screenRedirect: Error fetching user: $e');
+          print('screenRedirect: Stack trace: $stackTrace');
+          FlutterNativeSplash.remove();
+          if (e.toString().contains('Unauthorized')) {
+            print('screenRedirect: Invalid token, clearing and redirecting to login');
+            await _storage.remove('auth_token');
+            _lastLoginResponse.value = null;
+            Get.offAll(() => const LoginScreen());
+          } else {
+            if (_lastLoginResponse.value != null && _lastLoginResponse.value!['user'] != null) {
+              final userData = _lastLoginResponse.value!['user'];
+              UserController.instance.user.value = UserModel.fromJson(userData);
+              print('screenRedirect: Using login response user data, redirecting to HomeScreen');
+              Get.offAll(() => const HomeScreen());
+            } else {
+              print('screenRedirect: No user data available, clearing token and redirecting to LoginScreen');
+              await _storage.remove('auth_token');
+              _lastLoginResponse.value = null;
+              Get.offAll(() => const LoginScreen());
+            }
+          }
         }
       } else {
-        // No token, go to login
+        print('screenRedirect: No token found, redirecting to LoginScreen');
+        FlutterNativeSplash.remove();
         Get.offAll(() => const LoginScreen());
       }
-    } catch (e) {
-      // Fallback to login screen
+    } catch (e, stackTrace) {
+      print('screenRedirect: Unexpected error: $e');
+      print('screenRedirect: Stack trace: $stackTrace');
+      FlutterNativeSplash.remove();
       Get.offAll(() => const LoginScreen());
+    } finally {
+      _isRedirecting.value = false;
     }
   }
 

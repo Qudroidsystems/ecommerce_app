@@ -13,7 +13,11 @@ class THttpHelper {
       final url = Uri.parse('$baseUrl/sanctum/csrf-cookie');
       print('THttpHelper: Fetching CSRF token from $url');
       final response = await http.get(url);
+      print('THttpHelper: CSRF response status: ${response.statusCode}, body: ${response.body}');
       if (response.statusCode != 204) {
+        if (response.body.contains('<!DOCTYPE html>')) {
+          throw TExceptions('Invalid CSRF response: Server returned HTML (likely 404 or 500)', response.statusCode);
+        }
         final body = response.body.isNotEmpty ? jsonDecode(response.body) : {};
         final message = body['message'] ?? 'Failed to fetch CSRF token: ${response.statusCode}';
         throw TExceptions.fromLaravelResponse(body, response.statusCode);
@@ -34,8 +38,9 @@ class THttpHelper {
     };
   }
 
-  static Future<Map<String, dynamic>> get(String endpoint) async {
+  static Future<Map<String, dynamic>> get(String endpoint, {bool skipCsrf = false}) async {
     try {
+      if (!skipCsrf) await fetchCsrfToken();
       final headers = await getHeaders();
       final url = Uri.parse('$baseUrl/${endpoint.replaceAll(RegExp(r'^/+'), '')}');
       print('THttpHelper: GET request to $url, headers: $headers');
@@ -91,6 +96,7 @@ class THttpHelper {
 
   static Future<Map<String, dynamic>> delete(String endpoint) async {
     try {
+      await fetchCsrfToken();
       final headers = await getHeaders();
       final url = Uri.parse('$baseUrl/${endpoint.replaceAll(RegExp(r'^/+'), '')}');
       print('THttpHelper: DELETE request to $url, headers: $headers');
@@ -122,8 +128,11 @@ class THttpHelper {
 
   static Map<String, dynamic> _handleResponse(http.Response response) {
     try {
-      final body = jsonDecode(response.body.isNotEmpty ? response.body : '{}');
-      print('THttpHelper: Response status: ${response.statusCode}, body: $body');
+      print('THttpHelper: Response status: ${response.statusCode}, body: ${response.body}');
+      if (response.body.contains('<!DOCTYPE html>')) {
+        throw TExceptions('Invalid response: Server returned HTML instead of JSON', response.statusCode);
+      }
+      final body = response.body.isNotEmpty ? jsonDecode(response.body) : {};
       if (response.statusCode >= 200 && response.statusCode < 300) {
         if (body is Map<String, dynamic>) {
           return body;
@@ -132,11 +141,13 @@ class THttpHelper {
         } else {
           return {'success': true, 'data': body};
         }
+      } else if (response.statusCode == 401) {
+        throw TExceptions('Unauthorized: Invalid or expired token', response.statusCode);
       } else {
         throw TExceptions.fromLaravelResponse(body, response.statusCode);
       }
     } catch (e) {
-      print('THttpHelper: JSON parsing error: $e');
+      print('THttpHelper: Response handling error: $e');
       throw TExceptions('Failed to parse response: ${response.body}', response.statusCode);
     }
   }

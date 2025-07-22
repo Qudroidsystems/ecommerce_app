@@ -1,13 +1,11 @@
-import 'package:get/get.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
-
 import '../../../data/repositories/authentication/authentication_repository.dart';
 import '../../../utils/constants/image_strings.dart';
 import '../../../utils/helpers/network_manager.dart';
 import '../../../utils/popups/full_screen_loader.dart';
 import '../../../utils/popups/loaders.dart';
-import '../../personalization/controllers/user_controller.dart';
 
 class LoginController extends GetxController {
   static LoginController get instance => Get.find();
@@ -18,7 +16,6 @@ class LoginController extends GetxController {
   final localStorage = GetStorage();
   final email = TextEditingController();
   final password = TextEditingController();
-  final userController = Get.put(UserController());
   GlobalKey<FormState> loginFormKey = GlobalKey<FormState>();
 
   @override
@@ -52,6 +49,9 @@ class LoginController extends GetxController {
       if (rememberMe.value) {
         localStorage.write('REMEMBER_ME_EMAIL', email.text.trim());
         localStorage.write('REMEMBER_ME_PASSWORD', password.text.trim());
+      } else {
+        localStorage.remove('REMEMBER_ME_EMAIL');
+        localStorage.remove('REMEMBER_ME_PASSWORD');
       }
 
       // Login user using Email & Password Authentication
@@ -60,14 +60,9 @@ class LoginController extends GetxController {
         password.text.trim(),
       );
 
-      // Fetch user data
-      await userController.fetchUserRecord();
-
       // Remove Loader
       TFullScreenLoader.stopLoading();
-
-      // Redirect
-      await AuthenticationRepository.instance.screenRedirect();
+      // Navigation is handled by AuthenticationRepository
     } catch (e) {
       TFullScreenLoader.stopLoading();
       TLoaders.errorSnackBar(title: 'Oh Snap', message: e.toString());
@@ -84,20 +79,16 @@ class LoginController extends GetxController {
       final isConnected = await NetworkManager.instance.isConnected();
       if (!isConnected) {
         TFullScreenLoader.stopLoading();
+        TLoaders.customToast(message: 'No Internet Connection');
         return;
       }
 
       // Google Authentication
       await AuthenticationRepository.instance.signInWithGoogle();
 
-      // Fetch user data
-      await userController.fetchUserRecord();
-
       // Remove Loader
       TFullScreenLoader.stopLoading();
-
-      // Redirect
-      await AuthenticationRepository.instance.screenRedirect();
+      // Navigation is handled by AuthenticationRepository
     } catch (e) {
       TFullScreenLoader.stopLoading();
       TLoaders.errorSnackBar(title: 'Oh Snap', message: e.toString());
@@ -114,20 +105,16 @@ class LoginController extends GetxController {
       final isConnected = await NetworkManager.instance.isConnected();
       if (!isConnected) {
         TFullScreenLoader.stopLoading();
+        TLoaders.customToast(message: 'No Internet Connection');
         return;
       }
 
       // Facebook Authentication
       await AuthenticationRepository.instance.signInWithFacebook();
 
-      // Fetch user data
-      await userController.fetchUserRecord();
-
       // Remove Loader
       TFullScreenLoader.stopLoading();
-
-      // Redirect
-      await AuthenticationRepository.instance.screenRedirect();
+      // Navigation is handled by AuthenticationRepository
     } catch (e) {
       TFullScreenLoader.stopLoading();
       TLoaders.errorSnackBar(title: 'Oh Snap', message: e.toString());

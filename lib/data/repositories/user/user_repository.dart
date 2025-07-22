@@ -9,12 +9,9 @@ import '../../../utils/exceptions/format_exceptions.dart';
 import '../../../utils/exceptions/platform_exceptions.dart';
 import '../../../utils/http/http_client.dart';
 
-
-/// Repository class for user-related operations.
 class UserRepository extends GetxController {
   static UserRepository get instance => Get.find();
 
-  /// Function to save user data to Laravel backend.
   Future<void> saveUserRecord(UserModel user) async {
     try {
       await THttpHelper.post('user', user.toJson());
@@ -23,21 +20,26 @@ class UserRepository extends GetxController {
     }
   }
 
-  /// Function to fetch user details from Laravel backend.
   Future<UserModel> fetchUserDetails() async {
     try {
-      final response = await THttpHelper.get('user');
+      final response = await THttpHelper.get('user', skipCsrf: true); // Skip CSRF for GET /user
+      print('fetchUserDetails: Response: $response');
       if (response['success']) {
-        return UserModel.fromJson(response['user']);
+        final userData = response['user'] ?? response['data']?['user'];
+        if (userData != null) {
+          return UserModel.fromJson(userData);
+        } else {
+          throw 'Invalid user data format';
+        }
       } else {
-        throw response['message'];
+        throw response['message'] ?? 'Failed to fetch user details';
       }
     } catch (e) {
+      print('fetchUserDetails: Error: $e');
       throw _handleException(e);
     }
   }
 
-  /// Function to update user data in Laravel backend.
   Future<void> updateUserDetails(UserModel updatedUser) async {
     try {
       await THttpHelper.put('user', updatedUser.toJson());
@@ -46,7 +48,6 @@ class UserRepository extends GetxController {
     }
   }
 
-  /// Update any field in specific Users endpoint
   Future<void> updateSingleField(Map<String, dynamic> json) async {
     try {
       await THttpHelper.patch('user', json);
@@ -55,26 +56,20 @@ class UserRepository extends GetxController {
     }
   }
 
-  /// Upload any Image
   Future<String> uploadImage(String path, XFile image) async {
     try {
-      // Fetch CSRF token before making the multipart request
       await THttpHelper.fetchCsrfToken();
-
       final uri = Uri.parse('${THttpHelper.baseUrl}/user/profile-picture');
       final request = http.MultipartRequest('POST', uri);
       request.files.add(await http.MultipartFile.fromPath('file', image.path));
-
-      // Get headers with Bearer token
       final headers = await THttpHelper.getHeaders();
       request.headers.addAll(headers);
-
       final response = await request.send();
       final responseBody = await response.stream.bytesToString();
       final jsonResponse = jsonDecode(responseBody);
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        return jsonResponse['url']; // Adjust based on your Laravel response
+        return jsonResponse['url'];
       } else {
         throw jsonResponse['message'] ?? 'Failed to upload image: ${response.statusCode}';
       }
@@ -83,7 +78,6 @@ class UserRepository extends GetxController {
     }
   }
 
-  /// Function to remove user data from Laravel backend.
   Future<void> removeUserRecord(String userId) async {
     try {
       await THttpHelper.delete('user');
@@ -92,7 +86,6 @@ class UserRepository extends GetxController {
     }
   }
 
-  /// Handle exceptions
   String _handleException(dynamic e) {
     if (e is FormatException) {
       return 'Invalid format. Please check your input.';
