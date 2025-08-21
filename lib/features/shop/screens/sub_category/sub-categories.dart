@@ -30,8 +30,8 @@ class SubCategoriesScreen extends StatelessWidget {
           child: Column(
             children: [
               /// Banner
-              const TRoundedImage(width: double.infinity, imageUrl: TImages.promoBanner3, applyImageRadius: true),
-              const SizedBox(height: TSizes.spaceBtwSections),
+              // const TRoundedImage(width: double.infinity, imageUrl: TImages.promoBanner3, applyImageRadius: true),
+              // const SizedBox(height: TSizes.spaceBtwSections),
 
               /// Sub Categories
               FutureBuilder(
@@ -59,7 +59,7 @@ class SubCategoriesScreen extends StatelessWidget {
                           final widget = TCloudHelperFunctions.checkMultiRecordState(snapshot: snapshot, loader: loader);
                           if (widget != null) return widget;
 
-                          /// Congratulations 🎊 Record found.
+                          /// Congratulations Record found.
                           final products = snapshot.data!;
                           return Column(
                             children: [

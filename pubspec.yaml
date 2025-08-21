@@ -27,6 +27,9 @@ dependencies:
   flutter_native_splash: ^2.4.0
   smooth_page_indicator: ^1.1.0
   wakelock_plus: ^1.2.4 #Only being used in the Dummy Data Uploader to keep screen on.
+  flutter_staggered_grid_view: ^0.7.0
+  google_fonts: ^6.1.0
+
 
   # Icons
   iconsax: ^0.0.8
@@ -75,6 +78,8 @@ flutter:
     - assets/images/animations/
     - assets/icons/payment_methods/
     - assets/images/on_boarding_images/
+    - assets/images/fallback_banner.png
+    - assets/images/fallback_category.png
 
   #--------------- LOCAL FONTS ------------------#
   fonts:
@@ -95,3 +100,9 @@ flutter:
           weight: 600
         - asset: assets/fonts/Poppins-Bold.ttf
           weight: 800
+
+flutter_native_splash:
+  color: "#FFFFFF"
+  color_dark: "#272727"
+  image: assets/logos/gozak.png
+  image_dark: assets/logos/gozak.png

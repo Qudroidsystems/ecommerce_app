@@ -1,4 +1,5 @@
 import 'package:cwt_ecommerce_app/data/repositories/order/order_repository.dart';
+import 'package:cwt_ecommerce_app/data/repositories/product/product_repository.dart';
 import 'package:cwt_ecommerce_app/features/personalization/controllers/settings_controller.dart';
 import 'package:get/get.dart';
 import '../data/repositories/user/user_repository.dart';
@@ -8,6 +9,7 @@ import '../features/shop/controllers/product/checkout_controller.dart';
 import '../features/shop/controllers/product/favourites_controller.dart';
 import '../features/shop/controllers/product/images_controller.dart';
 import '../features/shop/controllers/product/order_controller.dart';
+import '../features/shop/controllers/product/product_controller.dart';
 import '../features/shop/controllers/product/variation_controller.dart';
 import '../utils/helpers/network_manager.dart';
 
@@ -20,6 +22,8 @@ class GeneralBindings extends Bindings {
     Get.put(UserController(), permanent: true);
 
     // -- Product
+    Get.put(ProductRepository());
+    Get.put(ProductController());
     Get.put(CheckoutController());
     Get.put(VariationController());
     Get.put(ImagesController());

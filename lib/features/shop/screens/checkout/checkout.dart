@@ -1,6 +1,7 @@
 import 'package:cwt_ecommerce_app/features/shop/controllers/product/checkout_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../common/widgets/appbar/appbar.dart';
 import '../../../../common/widgets/custom_shapes/containers/rounded_container.dart';
@@ -73,7 +74,7 @@ class CheckoutScreen extends StatelessWidget {
 
                     /// Address Checkbox
                     Obx(
-                      () => CheckboxListTile(
+                          () => CheckboxListTile(
                         controlAffinity: ListTileControlAffinity.leading,
                         title: const Text('Billing Address is Same as Shipping Address'),
                         value: addressController.billingSameAsShipping.value,
@@ -107,9 +108,27 @@ class CheckoutScreen extends StatelessWidget {
             onPressed: subTotal > 0
                 ? () => orderController.processOrder(subTotal)
                 : () => TLoaders.warningSnackBar(title: 'Empty Cart', message: 'Add items in the cart in order to proceed.'),
-            child: Text('Checkout \$${checkoutController.getTotal(subTotal).toStringAsFixed(2)}'),
+            child: _buildCheckoutButtonText(context, checkoutController, subTotal),
           ),
         ),
+      ),
+    );
+  }
+
+  /// Helper method to build checkout button text with proper Naira symbol
+  Widget _buildCheckoutButtonText(BuildContext context, CheckoutController controller, double subTotal) {
+    final buttonTextStyle = Theme.of(context).textTheme.labelLarge?.copyWith(
+      color: Colors.white, // Assuming white text on button
+      fontWeight: FontWeight.w600,
+    );
+
+    return Text(
+      'Checkout ₦${controller.getTotal(subTotal).toStringAsFixed(2)}',
+      style: GoogleFonts.roboto(
+        fontSize: buttonTextStyle?.fontSize,
+        fontWeight: buttonTextStyle?.fontWeight,
+        color: buttonTextStyle?.color,
+        letterSpacing: buttonTextStyle?.letterSpacing,
       ),
     );
   }

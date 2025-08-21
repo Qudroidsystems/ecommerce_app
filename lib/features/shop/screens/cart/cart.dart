@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-
+import 'package:google_fonts/google_fonts.dart';
 import '../../../../common/widgets/appbar/appbar.dart';
 import '../../../../common/widgets/loaders/animation_loader.dart';
 import '../../../../home_menu.dart';
@@ -44,22 +44,28 @@ class CartScreen extends StatelessWidget {
       }),
 
       /// -- Checkout Button
-      bottomNavigationBar: Obx(
-        () {
-          return cartItems.isNotEmpty
-              ? Padding(
-                  padding: const EdgeInsets.all(TSizes.defaultSpace),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () => Get.to(() => const CheckoutScreen()),
-                      child: Obx(() => Text('Checkout ${controller.totalCartPrice.value}')),
-                    ),
-                  ),
-                )
-              : const SizedBox();
-        },
-      ),
+      bottomNavigationBar: Obx(() {
+        return cartItems.isNotEmpty
+            ? Padding(
+          padding: const EdgeInsets.all(TSizes.defaultSpace),
+          child: SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => Get.to(() => const CheckoutScreen()),
+              child: Obx(() => Text(
+                'Checkout ₦${controller.totalCartPrice.value.toStringAsFixed(2)}',
+                style: GoogleFonts.roboto(
+                  fontSize: Theme.of(context).textTheme.labelLarge?.fontSize,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                  letterSpacing: Theme.of(context).textTheme.labelLarge?.letterSpacing,
+                ),
+              )),
+            ),
+          ),
+        )
+            : const SizedBox();
+      }),
     );
   }
 }

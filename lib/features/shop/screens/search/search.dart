@@ -48,7 +48,7 @@ class SearchScreen extends StatelessWidget {
                     child: TextFormField(
                       autofocus: true,
                       onChanged: (search) => searchController.searchProducts(search),
-                      decoration: const InputDecoration(prefixIcon: Icon(Iconsax.search_normal), hintText: 'Search'),
+                      decoration: const InputDecoration(prefixIcon: Icon(Iconsax.search_normal), hintText: 'Search in Gozak'),
                     ),
                   ),
                   const SizedBox(width: TSizes.spaceBtwItems),

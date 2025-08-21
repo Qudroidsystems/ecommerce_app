@@ -47,52 +47,49 @@
 		<true/>
 		<key>UIStatusBarHidden</key>
 		<false/>
-
 		<!-- Gallery and Camera Permission -->
 		<key>NSPhotoLibraryUsageDescription</key>
-        <string>Use to update profile picture and send images in chat</string>
-        <key>NSCameraUsageDescription</key>
-        <string>To capture profile photo please grant camera access</string>
-        <!-- END Gallery and Camera Permission -->
-
-        <!-- Google Sign-in & Facebook SignIn Section -->
-        <key>CFBundleURLTypes</key>
-        <array>
-        <!-- GOOGLE -->
-            <dict>
-                <key>CFBundleTypeRole</key>
-        		<string>Editor</string>
-        		<key>CFBundleURLSchemes</key>
-        		<array>
-        			<!-- Copied from GoogleService-Info.plist key REVERSED_CLIENT_ID -->
-        			<string>com.googleusercontent.apps.823307041176-ao9frv5a25ebiimfstp79lnc214urhgj</string>
-        		</array>
-        	</dict>
-        	<!-- FACEBOOK -->
-        	<dict>
-        	    <key>CFBundleTypeRole</key>
-                <string>Editor</string>
-        	    <key>CFBundleURLSchemes</key>
-        		<array>
-        			<string>fb322860757141019</string>
-        		</array>
-        	</dict>
-        </array>
-        <!-- FACEBOOK IDs -->
-        <key>FacebookAppID</key>
-        <string>322860757141019</string>
-        <key>FacebookClientToken</key>
-        <string>61b27c7f7e66c7a0a26ce5a4d4dad831</string>
-        <key>FacebookDisplayName</key>
-        <string>CwT</string>
-        <key>LSApplicationQueriesSchemes</key>
-        <array>
-        	<string>fbapi</string>
-        	<string>fb-messenger-share-api</string>
-        	<string>fbauth2</string>
-        	<string>fbshareextension</string>
-        </array>
-        <!-- End of the Google & Facebook Sign-in Section -->
-
+		<string>Use to update profile picture and send images in chat</string>
+		<key>NSCameraUsageDescription</key>
+		<string>To capture profile photo please grant camera access</string>
+		<!-- END Gallery and Camera Permission -->
+		<!-- Google Sign-in & Facebook SignIn Section -->
+		<key>CFBundleURLTypes</key>
+		<array>
+			<!-- GOOGLE -->
+			<dict>
+				<key>CFBundleTypeRole</key>
+				<string>Editor</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<!-- Copied from GoogleService-Info.plist key REVERSED_CLIENT_ID -->
+					<string>com.googleusercontent.apps.823307041176-ao9frv5a25ebiimfstp79lnc214urhgj</string>
+				</array>
+			</dict>
+			<!-- FACEBOOK -->
+			<dict>
+				<key>CFBundleTypeRole</key>
+				<string>Editor</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>fb322860757141019</string>
+				</array>
+			</dict>
+		</array>
+		<!-- FACEBOOK IDs -->
+		<key>FacebookAppID</key>
+		<string>322860757141019</string>
+		<key>FacebookClientToken</key>
+		<string>61b27c7f7e66c7a0a26ce5a4d4dad831</string>
+		<key>FacebookDisplayName</key>
+		<string>CwT</string>
+		<key>LSApplicationQueriesSchemes</key>
+		<array>
+			<string>fbapi</string>
+			<string>fb-messenger-share-api</string>
+			<string>fbauth2</string>
+			<string>fbshareextension</string>
+		</array>
+		<!-- End of the Google & Facebook Sign-in Section -->
 	</dict>
 </plist>

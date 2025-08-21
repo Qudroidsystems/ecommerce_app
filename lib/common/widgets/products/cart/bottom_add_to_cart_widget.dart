@@ -24,7 +24,7 @@ class TBottomAddToCart extends StatelessWidget {
     final dark = THelperFunctions.isDarkMode(context);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: TSizes.defaultSpace, vertical: TSizes.defaultSpace / 2),
+      padding: const EdgeInsets.symmetric(horizontal: TSizes.defaultSpace, vertical: 8.0), // Changed from TSizes.defaultSpace / 2 to TSizes.sm
       decoration: BoxDecoration(
         color: dark ? TColors.darkerGrey : TColors.light,
         borderRadius: const BorderRadius.only(
@@ -33,7 +33,7 @@ class TBottomAddToCart extends StatelessWidget {
         ),
       ),
       child: Obx(
-        () => Row(
+            () => Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             // Add OR Remove Cart Product Icon Buttons
@@ -48,11 +48,11 @@ class TBottomAddToCart extends StatelessWidget {
               onPressed: controller.productQuantityInCart.value < 1 ? null : () => controller.addToCart(product),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.all(TSizes.md),
-                backgroundColor: TColors.black,
+                backgroundColor: TColors.red,
                 side: const BorderSide(color: TColors.black),
               ),
               child: const Row(
-                children: [Icon(Iconsax.shopping_bag), SizedBox(width: TSizes.spaceBtwItems / 2), Text('Add to Bag')],
+                children: [Icon(Iconsax.shopping_bag), SizedBox(width: TSizes.spaceBtwItems / 2), Text('Add to Cart')],
               ),
             ),
           ],

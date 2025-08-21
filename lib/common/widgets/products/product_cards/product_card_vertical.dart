@@ -19,10 +19,22 @@ import 'widgets/product_card_pricing_widget.dart';
 import 'widgets/product_sale_tag.dart';
 
 class TProductCardVertical extends StatelessWidget {
-  const TProductCardVertical({super.key, required this.product, this.isNetworkImage = true});
+  const TProductCardVertical({
+    super.key,
+    required this.product,
+    this.isNetworkImage = true,
+    this.width = 180,
+    this.showAddToCart = true,
+    this.showFavourite = true,
+    this.onTap,
+  });
 
   final ProductModel product;
   final bool isNetworkImage;
+  final double width;
+  final bool showAddToCart;
+  final bool showFavourite;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -30,76 +42,134 @@ class TProductCardVertical extends StatelessWidget {
     final salePercentage = productController.calculateSalePercentage(product.price, product.salePrice);
     final dark = THelperFunctions.isDarkMode(context);
 
-    return GestureDetector(
-      onTap: () => Get.to(() => ProductDetailScreen(product: product)),
-
-      /// Container with side paddings, color, edges, radius and shadow.
-      child: Container(
-        width: 180,
-        padding: const EdgeInsets.all(1),
-        decoration: BoxDecoration(
-          boxShadow: [TShadowStyle.verticalProductShadow],
+    return Semantics(
+      label: 'Product card: ${product.title}',
+      hint: 'Tap to view product details',
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onTap ?? () => _navigateToProductDetail(),
           borderRadius: BorderRadius.circular(TSizes.productImageRadius),
-          color: dark ? TColors.darkerGrey : TColors.white,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            /// Thumbnail, Wishlist Button, Discount Tag
-            TRoundedContainer(
-              height: 180,
-              width: 180,
-              padding: const EdgeInsets.all(TSizes.sm),
-              backgroundColor: dark ? TColors.dark : TColors.light,
-              child: Stack(
-                children: [
-                  /// -- Thumbnail Image
-                  Center(child: TRoundedImage(imageUrl: product.thumbnail, applyImageRadius: true, isNetworkImage: isNetworkImage)),
-
-                  /// -- Sale Tag
-                  if (salePercentage != null) ProductSaleTagWidget(salePercentage: salePercentage),
-
-                  /// -- Favourite Icon Button
-                  Positioned(
-                    top: 0,
-                    right: 0,
-                    child: TFavouriteIcon(productId: product.id),
-                  ),
-                ],
-              ),
+          splashColor: TColors.primary.withOpacity(0.1),
+          highlightColor: TColors.primary.withOpacity(0.05),
+          child: Container(
+            width: width,
+            padding: const EdgeInsets.all(1),
+            decoration: BoxDecoration(
+              boxShadow: [TShadowStyle.verticalProductShadow],
+              borderRadius: BorderRadius.circular(TSizes.productImageRadius),
+              color: dark ? TColors.darkerGrey : TColors.white,
             ),
-            const SizedBox(height: TSizes.spaceBtwItems / 2),
-
-            /// -- Details
-            Padding(
-              padding: const EdgeInsets.only(left: TSizes.sm),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TProductTitleText(title: product.title, smallSize: true),
-                  const SizedBox(height: TSizes.spaceBtwItems / 2),
-                  TBrandTitleWithVerifiedIcon(title: product.brand!.name, brandTextSize: TextSizes.small),
-                ],
-              ),
-            ),
-
-            /// Price & Add to cart button
-            /// Use Spacer() to utilize all the space and set the price and cart button at the bottom.
-            /// This usually happens when Product title is in single line or 2 lines (Max)
-            const Spacer(),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min, // Take minimum space needed
               children: [
-                /// Pricing
-                PricingWidget(product: product),
-
-                /// Add to cart
-                ProductCardAddToCartButton(product: product),
+                _buildImageSection(context, dark, salePercentage),
+                const SizedBox(height: TSizes.xs), // Reduced spacing
+                _buildProductDetails(),
+                const SizedBox(height: TSizes.xs), // Add small spacing before bottom section
+                Padding(
+                  padding: const EdgeInsets.only(left: TSizes.sm, bottom: TSizes.xs),
+                  child: _buildBottomSection(),
+                ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );
+  }
+
+  Widget _buildImageSection(BuildContext context, bool dark, String? salePercentage) {
+    return TRoundedContainer(
+      height: 180,
+      width: 180,
+      padding: const EdgeInsets.all(TSizes.sm),
+      backgroundColor: dark ? TColors.dark : TColors.light,
+      child: Stack(
+        children: [
+          /// -- Thumbnail Image
+          Center(
+            child: Hero(
+              tag: 'product-${product.id}',
+              child: TRoundedImage(
+                imageUrl: product.thumbnail,
+                applyImageRadius: true,
+                isNetworkImage: isNetworkImage,
+              ),
+            ),
+          ),
+
+          /// -- Sale Tag
+          if (salePercentage != null && salePercentage.isNotEmpty)
+            ProductSaleTagWidget(salePercentage: salePercentage),
+
+          /// -- Favourite Icon Button
+          if (showFavourite)
+            Positioned(
+              top: 0,
+              right: 0,
+              child: TFavouriteIcon(productId: product.id),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProductDetails() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: TSizes.sm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min, // Take minimum space needed
+        children: [
+          TProductTitleText(
+            title: product.title,
+            smallSize: true,
+            maxLines: 1, // Limit to 1 line to save more space
+          ),
+          const SizedBox(height: TSizes.xs / 2), // Even smaller spacing
+
+          if (product.brand != null)
+            TBrandTitleWithVerifiedIcon(
+              title: product.brand!.name,
+              brandTextSize: TextSizes.small,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomSection() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        /// Pricing - Use Expanded to take available space
+        Expanded(
+          child: PricingWidget(product: product),
+        ),
+
+        const SizedBox(width: TSizes.xs), // Add small spacing
+
+        /// Add to cart
+        if (showAddToCart)
+          ProductCardAddToCartButton(product: product),
+      ],
+    );
+  }
+
+  void _navigateToProductDetail() {
+    try {
+      Get.to(
+            () => ProductDetailScreen(product: product),
+        transition: Transition.fadeIn,
+        duration: const Duration(milliseconds: 300),
+      );
+    } catch (e) {
+      debugPrint('Navigation error: $e');
+      // Fallback navigation
+      Get.to(() => ProductDetailScreen(product: product));
+    }
   }
 }

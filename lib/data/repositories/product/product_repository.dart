@@ -1,108 +1,193 @@
 import 'dart:io';
-import 'package:cwt_ecommerce_app/data/repositories/brands/brand_repository.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
-
 import '../../../features/shop/models/product_model.dart';
 import '../../../utils/constants/enums.dart';
 import '../../../utils/exceptions/exceptions.dart';
-import '../../../utils/http/http_client.dart'; // Import your THttpHelper
+import '../../../utils/http/http_client.dart';
+import '../../repositories/brands/brand_repository.dart';
 
-
-/// Repository for managing product-related data and operations using a Laravel API.
 class ProductRepository extends GetxController {
   static ProductRepository get instance => Get.find();
 
-  /* ---------------------------- FUNCTIONS ---------------------------------*/
-
-  /// Get limited featured products.
-  Future<List<ProductModel>> getFeaturedProducts() async {
+  Future<List<ProductModel>> parseProductsInIsolate(List<dynamic> data) async {
     try {
-      final response = await THttpHelper.get('/products?featured=true&limit=4');
-      final List<dynamic> data = response['data'] ?? [];
-      return data.map((json) => ProductModel.fromJson(json)).toList();
-    } catch (e) {
-      throw TExceptions('Failed to fetch featured products: $e');
+      return await compute((input) {
+        return input
+            .where((json) => json != null && json is Map<String, dynamic>)
+            .map((json) => ProductModel.fromJson(json as Map<String, dynamic>))
+            .toList();
+      }, data);
+    } catch (e, stackTrace) {
+      print('ProductRepository: Error parsing products in isolate: $e\nStackTrace: $stackTrace');
+      return [];
     }
   }
 
-  /// Get a single product by ID.
+  Future<List<ProductModel>> getFeaturedProducts() async {
+    try {
+      final response = await THttpHelper.get('/products?featured=true&limit=20');
+      print('ProductRepository: Raw API Response for getFeaturedProducts: $response');
+      if (response['success'] != true) {
+        print('ProductRepository: API returned success: false');
+        throw TExceptions('API returned success: false', null);
+      }
+
+      final List<dynamic>? data = response['data'];
+      if (data == null || data.isEmpty) {
+        print('ProductRepository: No data found in response');
+        return <ProductModel>[];
+      }
+
+      print('ProductRepository: Parsed data for getFeaturedProducts: $data');
+      return await parseProductsInIsolate(data);
+    } catch (e, stackTrace) {
+      print('ProductRepository: Error in getFeaturedProducts: $e\nStackTrace: $stackTrace');
+      throw TExceptions('Failed to fetch featured products: $e', null);
+    }
+  }
+
   Future<ProductModel> getSingleProduct(String productId) async {
     try {
       final response = await THttpHelper.get('/products/$productId');
-      return ProductModel.fromJson(response['data']);
-    } catch (e) {
-      throw TExceptions('Failed to fetch product: $e');
+      print('ProductRepository: Raw API Response for getSingleProduct: $response');
+      if (response['success'] != true) {
+        throw TExceptions('API returned success: false', null);
+      }
+
+      final data = response['data'];
+      if (data == null || data is! Map<String, dynamic>) {
+        throw TExceptions('Invalid product data format', null);
+      }
+
+      return ProductModel.fromJson(data);
+    } catch (e, stackTrace) {
+      print('ProductRepository: Error in getSingleProduct: $e\nStackTrace: $stackTrace');
+      throw TExceptions('Failed to fetch product: $e', null);
     }
   }
 
-  /// Get all featured products.
   Future<List<ProductModel>> getAllFeaturedProducts() async {
     try {
       final response = await THttpHelper.get('/products?featured=true');
-      final List<dynamic> data = response['data'] ?? [];
-      return data.map((json) => ProductModel.fromJson(json)).toList();
-    } catch (e) {
-      throw TExceptions('Failed to fetch all featured products: $e');
+      print('ProductRepository: Raw API Response for getAllFeaturedProducts: $response');
+      if (response['success'] != true) {
+        throw TExceptions('API returned success: false', null);
+      }
+
+      final List<dynamic>? data = response['data'];
+      if (data == null || data.isEmpty) {
+        print('ProductRepository: No data found in response');
+        return <ProductModel>[];
+      }
+
+      print('ProductRepository: Parsed data for getAllFeaturedProducts: $data');
+      return await parseProductsInIsolate(data);
+    } catch (e, stackTrace) {
+      print('ProductRepository: Error in getAllFeaturedProducts: $e\nStackTrace: $stackTrace');
+      throw TExceptions('Failed to fetch all featured products: $e', null);
     }
   }
 
-  /// Fetch products by query (replaced with API filtering).
   Future<List<ProductModel>> fetchProductsByQuery(dynamic query) async {
     try {
-      // Since query was for Firestore, we'll assume it's a Map for API params
       String endpoint = '/products';
       if (query is Map<String, dynamic>) {
         final queryParams = query.entries.map((e) => '${e.key}=${e.value}').join('&');
         endpoint += '?$queryParams';
       }
       final response = await THttpHelper.get(endpoint);
-      final List<dynamic> data = response['data'] ?? [];
-      return data.map((json) => ProductModel.fromJson(json)).toList();
-    } catch (e) {
-      throw TExceptions('Failed to fetch products by query: $e');
+      print('ProductRepository: Raw API Response for fetchProductsByQuery: $response');
+      if (response['success'] != true) {
+        throw TExceptions('API returned success: false', null);
+      }
+
+      final List<dynamic>? data = response['data'];
+      if (data == null || data.isEmpty) {
+        print('ProductRepository: No data found in response');
+        return <ProductModel>[];
+      }
+
+      print('ProductRepository: Parsed data for fetchProductsByQuery: $data');
+      return await parseProductsInIsolate(data);
+    } catch (e, stackTrace) {
+      print('ProductRepository: Error in fetchProductsByQuery: $e\nStackTrace: $stackTrace');
+      throw TExceptions('Failed to fetch products by query: $e', null);
     }
   }
 
-  /// Get favorite products based on a list of product IDs.
   Future<List<ProductModel>> getFavouriteProducts(List<String> productIds) async {
     try {
       final response = await THttpHelper.get('/products?ids=${productIds.join(',')}');
-      final List<dynamic> data = response['data'] ?? [];
-      return data.map((json) => ProductModel.fromJson(json)).toList();
-    } catch (e) {
-      throw TExceptions('Failed to fetch favorite products: $e');
+      print('ProductRepository: Raw API Response for getFavouriteProducts: $response');
+      if (response['success'] != true) {
+        throw TExceptions('API returned success: false', null);
+      }
+
+      final List<dynamic>? data = response['data'];
+      if (data == null || data.isEmpty) {
+        print('ProductRepository: No data found in response');
+        return <ProductModel>[];
+      }
+
+      print('ProductRepository: Parsed data for getFavouriteProducts: $data');
+      return await parseProductsInIsolate(data);
+    } catch (e, stackTrace) {
+      print('ProductRepository: Error in getFavouriteProducts: $e\nStackTrace: $stackTrace');
+      throw TExceptions('Failed to fetch favorite products: $e', null);
     }
   }
 
-  /// Fetches products for a specific category.
-  Future<List<ProductModel>> getProductsForCategory({required String categoryId, int limit = 4}) async {
+  Future<List<ProductModel>> getProductsForCategory({required String categoryId, int limit = 20}) async {
     try {
       final endpoint = limit == -1
           ? '/products?category_id=$categoryId'
           : '/products?category_id=$categoryId&limit=$limit';
       final response = await THttpHelper.get(endpoint);
-      final List<dynamic> data = response['data'] ?? [];
-      return data.map((json) => ProductModel.fromJson(json)).toList();
-    } catch (e) {
-      throw TExceptions('Failed to fetch products for category: $e');
+      print('ProductRepository: Raw API Response for getProductsForCategory: $response');
+      if (response['success'] != true) {
+        throw TExceptions('API returned success: false', null);
+      }
+
+      final List<dynamic>? data = response['data'];
+      if (data == null || data.isEmpty) {
+        print('ProductRepository: No data found in response');
+        return <ProductModel>[];
+      }
+
+      print('ProductRepository: Parsed data for getProductsForCategory: $data');
+      return await parseProductsInIsolate(data);
+    } catch (e, stackTrace) {
+      print('ProductRepository: Error in getProductsForCategory: $e\nStackTrace: $stackTrace');
+      throw TExceptions('Failed to fetch products for category: $e', null);
     }
   }
 
-  /// Fetches products for a specific brand.
   Future<List<ProductModel>> getProductsForBrand(String brandId, int limit) async {
     try {
       final endpoint = limit == -1
           ? '/products?brand_id=$brandId'
           : '/products?brand_id=$brandId&limit=$limit';
       final response = await THttpHelper.get(endpoint);
-      final List<dynamic> data = response['data'] ?? [];
-      return data.map((json) => ProductModel.fromJson(json)).toList();
-    } catch (e) {
-      throw TExceptions('Failed to fetch products for brand: $e');
+      print('ProductRepository: Raw API Response for getProductsForBrand: $response');
+      if (response['success'] != true) {
+        throw TExceptions('API returned success: false', null);
+      }
+
+      final List<dynamic>? data = response['data'];
+      if (data == null || data.isEmpty) {
+        print('ProductRepository: No data found in response');
+        return <ProductModel>[];
+      }
+
+      print('ProductRepository: Parsed data for getProductsForBrand: $data');
+      return await parseProductsInIsolate(data);
+    } catch (e, stackTrace) {
+      print('ProductRepository: Error in getProductsForBrand: $e\nStackTrace: $stackTrace');
+      throw TExceptions('Failed to fetch products for brand: $e', null);
     }
   }
 
-  /// Search products with optional filters.
   Future<List<ProductModel>> searchProducts(
       String query, {
         String? categoryId,
@@ -118,60 +203,71 @@ class ProductRepository extends GetxController {
       if (maxPrice != null) endpoint += '&max_price=$maxPrice';
 
       final response = await THttpHelper.get(endpoint);
-      final List<dynamic> data = response['data'] ?? [];
-      return data.map((json) => ProductModel.fromJson(json)).toList();
-    } catch (e) {
-      throw TExceptions('Failed to search products: $e');
+      print('ProductRepository: Raw API Response for searchProducts: $response');
+      if (response['success'] != true) {
+        throw TExceptions('API returned success: false', null);
+      }
+
+      final List<dynamic>? data = response['data'];
+      if (data == null || data.isEmpty) {
+        print('ProductRepository: No data found in response');
+        return <ProductModel>[];
+      }
+
+      print('ProductRepository: Parsed data for searchProducts: $data');
+      return await parseProductsInIsolate(data);
+    } catch (e, stackTrace) {
+      print('ProductRepository: Error in searchProducts: $e\nStackTrace: $stackTrace');
+      throw TExceptions('Failed to search products: $e', null);
     }
   }
 
-  /// Update a single field in a product.
   Future<void> updateSingleField(String docId, Map<String, dynamic> json) async {
     try {
       await THttpHelper.patch('/products/$docId', json);
-    } catch (e) {
-      throw TExceptions('Failed to update product field: $e');
+      print('ProductRepository: Updated single field for product $docId');
+    } catch (e, stackTrace) {
+      print('ProductRepository: Error in updateSingleField: $e\nStackTrace: $stackTrace');
+      throw TExceptions('Failed to update product field: $e', null);
     }
   }
 
-  /// Update an entire product.
   Future<void> updateProduct(ProductModel product) async {
     try {
       await THttpHelper.put('/products/${product.id}', product.toJson());
-    } catch (e) {
-      throw TExceptions('Failed to update product: $e');
+      print('ProductRepository: Updated product ${product.id}');
+    } catch (e, stackTrace) {
+      print('ProductRepository: Error in updateProduct: $e\nStackTrace: $stackTrace');
+      throw TExceptions('Failed to update product: $e', null);
     }
   }
 
-  /// Upload dummy data to the API (simplified without Firebase Storage).
   Future<void> uploadDummyData(List<ProductModel> products) async {
     try {
       final brandRepository = Get.put(BrandRepository());
-
       for (var product in products) {
-        // Fetch brand data from API (assuming BrandRepository is also refactored)
-        final brand = await brandRepository.getSingleBrand(product.brand!.id);
-        if (brand == null || brand.image.isEmpty) {
-          throw 'No Brands found. Please upload brands first.';
+        if (product.brand != null) {
+          final brand = await brandRepository.getSingleBrand(product.brand!.id);
+          if (brand == null || brand.image.isEmpty) {
+            throw TExceptions('No Brands found. Please upload brands first.', null);
+          }
+          product.brand = brand;
         }
-        product.brand!.image = brand.image;
 
-        // For simplicity, assume images are already hosted or uploaded separately
-        // If you need to upload images, use THttpHelper.uploadFile
         if (product.images != null && product.images!.isNotEmpty) {
           List<String> uploadedImages = [];
           for (var image in product.images!) {
-            if (File(image).existsSync()) { // Check if it's a local file
+            if (File(image).existsSync()) {
               final response = await THttpHelper.uploadFile('/upload', File(image), 'image');
               uploadedImages.add(response['url']);
             } else {
-              uploadedImages.add(image); // Assume it's already a URL
+              uploadedImages.add(image);
             }
           }
           product.images = uploadedImages;
         }
 
-        if (product.productType == ProductType.variable.toString()) {
+        if (product.productType == ProductType.variable.toString() && product.productVariations != null) {
           for (var variation in product.productVariations!) {
             if (File(variation.image).existsSync()) {
               final response = await THttpHelper.uploadFile('/upload', File(variation.image), 'image');
@@ -180,11 +276,12 @@ class ProductRepository extends GetxController {
           }
         }
 
-        // Store product in API
         await THttpHelper.post('/products', product.toJson());
+        print('ProductRepository: Uploaded product ${product.id}');
       }
-    } catch (e) {
-      throw TExceptions('Failed to upload dummy data: $e');
+    } catch (e, stackTrace) {
+      print('ProductRepository: Error in uploadDummyData: $e\nStackTrace: $stackTrace');
+      throw TExceptions('Failed to upload dummy data: $e', null);
     }
   }
 }

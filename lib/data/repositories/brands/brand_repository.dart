@@ -8,14 +8,18 @@ import '../../../utils/http/http_client.dart';
 class BrandRepository extends GetxController {
   static BrandRepository get instance => Get.find();
 
-
-
   /// Get all brands
   Future<List<BrandModel>> getAllBrands() async {
     try {
       final response = await THttpHelper.get('/brands');
-      return (response as List).map((e) => BrandModel.fromJson(e)).toList();
+      print('Raw API Response (getAllBrands): $response');
+      if (response is Map && response['success'] == true) {
+        return (response['data'] as List).map((e) => BrandModel.fromJson(e)).toList();
+      } else {
+        throw 'Invalid API response format';
+      }
     } catch (e) {
+      print('Error in getAllBrands: $e');
       throw _handleError(e);
     }
   }
@@ -24,8 +28,10 @@ class BrandRepository extends GetxController {
   Future<BrandModel?> getSingleBrand(String id) async {
     try {
       final response = await THttpHelper.get('/brands/$id');
+      print('Raw API Response (getSingleBrand): $response');
       return BrandModel.fromJson(response);
     } catch (e) {
+      print('Error in getSingleBrand: $e');
       throw _handleError(e);
     }
   }
@@ -33,9 +39,15 @@ class BrandRepository extends GetxController {
   /// Get featured brands
   Future<List<BrandModel>> getFeaturedBrands() async {
     try {
-      final response = await THttpHelper.get('/brands?isFeatured=true&limit=4');
-      return (response as List).map((e) => BrandModel.fromJson(e)).toList();
+      final response = await THttpHelper.get('/brands?isFeatured=true&limit=20');
+      print('Raw API Response (getFeaturedBrands): $response');
+      if (response is Map && response['success'] == true) {
+        return (response['data'] as List).map((e) => BrandModel.fromJson(e)).toList();
+      } else {
+        throw 'Invalid API response format';
+      }
     } catch (e) {
+      print('Error in getFeaturedBrands: $e');
       throw _handleError(e);
     }
   }
@@ -44,8 +56,14 @@ class BrandRepository extends GetxController {
   Future<List<BrandModel>> getBrandsForCategory(String categoryId) async {
     try {
       final response = await THttpHelper.get('/brands/category/$categoryId');
-      return (response as List).map((e) => BrandModel.fromJson(e)).toList();
+      print('Raw API Response (getBrandsForCategory): $response');
+      if (response is Map && response['success'] == true) {
+        return (response['data'] as List).map((e) => BrandModel.fromJson(e)).toList();
+      } else {
+        throw 'Invalid API response format';
+      }
     } catch (e) {
+      print('Error in getBrandsForCategory: $e');
       throw _handleError(e);
     }
   }
@@ -57,6 +75,7 @@ class BrandRepository extends GetxController {
         await THttpHelper.post('/brands', brand.toJson());
       }
     } catch (e) {
+      print('Error in uploadDummyData: $e');
       throw _handleError(e);
     }
   }
@@ -68,6 +87,7 @@ class BrandRepository extends GetxController {
         await THttpHelper.post('/brand-categories', entry.toJson());
       }
     } catch (e) {
+      print('Error in uploadBrandCategoryDummyData: $e');
       throw _handleError(e);
     }
   }

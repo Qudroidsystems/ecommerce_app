@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../../../utils/constants/sizes.dart';
 import '../shimmers/shimmer.dart';
@@ -13,9 +12,9 @@ class TRoundedImage extends StatelessWidget {
     this.height,
     this.applyImageRadius = true,
     required this.imageUrl,
-    this.fit = BoxFit.contain,
+    this.fit = BoxFit.cover,
     this.backgroundColor,
-    this.isNetworkImage = false,
+    this.isNetworkImage = true,
     this.borderRadius = TSizes.md,
   });
 
@@ -32,26 +31,57 @@ class TRoundedImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    print('TRoundedImage: Loading image: $imageUrl'); // Debug
     return GestureDetector(
       onTap: onPressed,
       child: Container(
         width: width,
         height: height,
         padding: padding,
-        decoration: BoxDecoration(border: border, color: backgroundColor, borderRadius: BorderRadius.circular(borderRadius)),
+        decoration: BoxDecoration(
+          border: border,
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(borderRadius),
+        ),
         child: ClipRRect(
           borderRadius: applyImageRadius ? BorderRadius.circular(borderRadius) : BorderRadius.zero,
           child: isNetworkImage
-              ? CachedNetworkImage(
-                  fit: fit,
-                  imageUrl: imageUrl,
-                  progressIndicatorBuilder: (context, url, downloadProgress) => TShimmerEffect(width: width ?? double.infinity, height: height ?? 158),
-                  errorWidget: (context, url, error) => const Icon(Icons.error),
-                )
+              ? Image.network(
+            imageUrl,
+            fit: fit,
+            width: width,
+            height: height,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              print('TRoundedImage: Progress for $imageUrl: ${loadingProgress.cumulativeBytesLoaded}/${loadingProgress.expectedTotalBytes}');
+              return TShimmerEffect(
+                width: width ?? double.infinity,
+                height: height ?? 158,
+              );
+            },
+            errorBuilder: (context, error, stackTrace) {
+              print('TRoundedImage: Image load error for $imageUrl: $error');
+              return SizedBox(
+                width: width ?? double.infinity,
+                height: height ?? 158,
+                child: const Icon(Icons.error, color: Colors.red),
+              );
+            },
+          )
               : Image(
-                  fit: fit,
-                  image: AssetImage(imageUrl),
-                ),
+            fit: fit,
+            image: AssetImage(imageUrl),
+            width: width,
+            height: height,
+            errorBuilder: (context, error, stackTrace) {
+              print('TRoundedImage: Asset load error for $imageUrl: $error');
+              return SizedBox(
+                width: width ?? double.infinity,
+                height: height ?? 158,
+                child: const Icon(Icons.error, color: Colors.red),
+              );
+            },
+          ),
         ),
       ),
     );

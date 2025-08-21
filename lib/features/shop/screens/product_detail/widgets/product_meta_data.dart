@@ -24,8 +24,10 @@ class TProductMetaData extends StatelessWidget {
     final controller = ProductController.instance;
     final salePercentage = ProductController.instance.calculateSalePercentage(product.price, product.salePrice);
     final darkMode = THelperFunctions.isDarkMode(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
         /// Price & Sale Price
         Row(
@@ -38,16 +40,15 @@ class TProductMetaData extends StatelessWidget {
                     backgroundColor: TColors.secondary,
                     radius: TSizes.sm,
                     padding: const EdgeInsets.symmetric(horizontal: TSizes.sm, vertical: TSizes.xs),
-                    child: Text('$salePercentage%',
+                    child: Text('$salePercentage',
                         style: Theme.of(context).textTheme.labelLarge!.apply(color: TColors.black)),
                   ),
                   const SizedBox(width: TSizes.spaceBtwItems)
                 ],
               ),
 
-
             // Actual Price if sale price not null.
-            if ((product.productVariations == null || product.productVariations!.isEmpty) && product.salePrice> 0.0)
+            if ((product.productVariations == null || product.productVariations!.isEmpty) && product.salePrice > 0.0)
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -57,31 +58,45 @@ class TProductMetaData extends StatelessWidget {
               ),
 
             // Price, Show sale price as main price if sale exist.
-            TProductPriceText(price: controller.getProductPrice(product), isLarge: true),
+            Flexible(
+              child: TProductPriceText(price: controller.getProductPrice(product), isLarge: true),
+            ),
           ],
         ),
-        const SizedBox(height: TSizes.spaceBtwItems / 1.5),
+        const SizedBox(height: TSizes.xs), // Further reduced spacing
+
+        // Product Title with flexible text handling
         TProductTitleText(title: product.title),
-        const SizedBox(height: TSizes.spaceBtwItems / 1.5),
+        const SizedBox(height: TSizes.xs), // Further reduced spacing
+
         Row(
           children: [
             const TProductTitleText(title: 'Stock : ', smallSize: true),
-            Text(controller.getProductStockStatus(product), style: Theme.of(context).textTheme.titleMedium),
+            Flexible(
+              child: Text(controller.getProductStockStatus(product),
+                  style: Theme.of(context).textTheme.titleMedium),
+            ),
           ],
         ),
-        const SizedBox(height: TSizes.spaceBtwItems / 2),
+        const SizedBox(height: TSizes.xs), // Further reduced spacing
 
         /// Brand
         Row(
           children: [
             TCircularImage(
-              width: 32,
-              height: 32,
+              width: 28, // Slightly smaller
+              height: 28, // Slightly smaller
               isNetworkImage: true,
               image: product.brand!.image,
               overlayColor: darkMode ? TColors.white : TColors.black,
             ),
-            TBrandTitleWithVerifiedIcon(title: product.brand!.name, brandTextSize: TextSizes.medium),
+            const SizedBox(width: TSizes.spaceBtwItems / 2), // Add spacing between image and text
+            Flexible(
+              child: TBrandTitleWithVerifiedIcon(
+                  title: product.brand!.name,
+                  brandTextSize: TextSizes.medium
+              ),
+            ),
           ],
         ),
       ],

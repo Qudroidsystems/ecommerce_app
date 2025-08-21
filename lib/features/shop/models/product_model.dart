@@ -1,13 +1,14 @@
-import 'brand_model.dart';
-import 'product_attribute_model.dart';
-import 'product_variation_model.dart';
+import 'dart:convert';
+import 'package:cwt_ecommerce_app/features/shop/models/brand_model.dart';
+import 'package:cwt_ecommerce_app/features/shop/models/product_attribute_model.dart';
+import 'package:cwt_ecommerce_app/features/shop/models/product_variation_model.dart';
 
 class ProductModel {
   String id;
+  String title;
   int stock;
   String? sku;
   double price;
-  String title;
   DateTime? date;
   int soldQuantity;
   double salePrice;
@@ -41,18 +42,15 @@ class ProductModel {
     this.productVariations,
   });
 
-  /// Create an empty instance for clean code
   static ProductModel empty() => ProductModel(
     id: '',
     title: '',
     stock: 0,
-    price: 0,
+    price: 0.0,
     thumbnail: '',
     productType: '',
-    soldQuantity: 0,
   );
 
-  /// Convert model to JSON for API requests
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -78,37 +76,60 @@ class ProductModel {
     };
   }
 
-  /// Create a ProductModel from JSON received from the Laravel API
   factory ProductModel.fromJson(Map<String, dynamic> json) {
+    dynamic attributesData = json['product_attributes'];
+    List<dynamic> parsedAttributes = [];
+
+    if (attributesData is String && attributesData.isNotEmpty) {
+      try {
+        parsedAttributes = jsonDecode(attributesData) as List<dynamic>;
+      } catch (e) {
+        print('ProductModel: Error decoding product_attributes: $e');
+        parsedAttributes = [];
+      }
+    } else if (attributesData is List<dynamic>) {
+      parsedAttributes = attributesData;
+    }
+
     return ProductModel(
-      id: json['id'].toString(), // Ensure ID is a string
-      title: json['title'] ?? '',
+      id: (json['id'] ?? '').toString(),
+      title: json['title'] as String? ?? '',
       price: (json['price'] is String
-          ? double.tryParse(json['price']) ?? 0.0
-          : json['price']?.toDouble() ?? 0.0),
-      sku: json['sku'],
-      stock: json['stock'] ?? 0,
-      soldQuantity: json['sold_quantity'] ?? 0,
-      isFeatured: json['is_featured'] ?? false,
+          ? double.tryParse(json['price'] as String) ?? 0.0
+          : (json['price'] as num?)?.toDouble() ?? 0.0),
+      sku: json['sku'] as String?,
+      stock: (json['stock'] is String
+          ? int.tryParse(json['stock'] as String) ?? 0
+          : (json['stock'] as num?)?.toInt() ?? 0),
+      soldQuantity: (json['sold_quantity'] is String
+          ? int.tryParse(json['sold_quantity'] as String) ?? 0
+          : (json['sold_quantity'] as num?)?.toInt() ?? 0),
+      isFeatured: json['is_featured'] == '1' ||
+          json['is_featured'] == true ||
+          (json['is_featured'] is int && json['is_featured'] == 1),
       salePrice: (json['sale_price'] is String
-          ? double.tryParse(json['sale_price']) ?? 0.0
-          : json['sale_price']?.toDouble() ?? 0.0),
-      thumbnail: json['thumbnail'] ?? '',
-      categoryId: json['category_id']?.toString(),
-      description: json['description'],
-      productType: json['product_type'] ?? '',
-      brand: json['brand'] != null ? BrandModel.fromJson(json['brand']) : null,
-      images: json['images'] != null ? List<String>.from(json['images']) : [],
-      productAttributes: json['product_attributes'] != null
-          ? (json['product_attributes'] as List<dynamic>)
-          .map((e) => ProductAttributeModel.fromJson(e))
-          .toList()
-          : [],
+          ? double.tryParse(json['sale_price'] as String) ?? 0.0
+          : (json['sale_price'] as num?)?.toDouble() ?? 0.0),
+      thumbnail: json['thumbnail'] as String? ?? '',
+      categoryId: (json['category_id'] ?? '').toString(),
+      description: json['description'] as String?,
+      productType: json['product_type'] as String? ?? '',
+      brand: json['brand'] != null
+          ? BrandModel.fromJson(json['brand'] as Map<String, dynamic>)
+          : null,
+      images: json['images'] != null
+          ? (json['images'] as List<dynamic>).cast<String>()
+          : <String>[],
+      productAttributes: parsedAttributes
+          .where((e) => e != null && e is Map<String, dynamic>)
+          .map((e) => ProductAttributeModel.fromJson(e as Map<String, dynamic>))
+          .toList(),
       productVariations: json['product_variations'] != null
           ? (json['product_variations'] as List<dynamic>)
-          .map((e) => ProductVariationModel.fromJson(e))
+          .where((e) => e != null && e is Map<String, dynamic>)
+          .map((e) => ProductVariationModel.fromJson(e as Map<String, dynamic>))
           .toList()
-          : [],
+          : <ProductVariationModel>[],
     );
   }
 }

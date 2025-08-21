@@ -1,7 +1,7 @@
 import 'package:cwt_ecommerce_app/utils/constants/enums.dart';
 import 'package:get/get.dart';
-
 import '../../../../data/repositories/product/product_repository.dart';
+import '../../../../utils/exceptions/exceptions.dart';
 import '../../../../utils/popups/loaders.dart';
 import '../../models/product_model.dart';
 
@@ -12,104 +12,94 @@ class ProductController extends GetxController {
   final productRepository = Get.put(ProductRepository());
   RxList<ProductModel> featuredProducts = <ProductModel>[].obs;
 
-  /// -- Initialize Products from your backend
   @override
   void onInit() {
     fetchFeaturedProducts();
     super.onInit();
   }
 
-  /// Fetch Products using Stream so, any change can immediately take effect.
-  void fetchFeaturedProducts() async {
+  Future<void> fetchFeaturedProducts() async {
     try {
-      // Show loader while loading Products
       isLoading.value = true;
-
-      // Fetch Products
       final products = await productRepository.getFeaturedProducts();
-
-      // Assign Products
+      print('ProductController: Fetched ${products.length} featured products: ${products.map((p) => p.toJson()).toList()}');
       featuredProducts.assignAll(products);
-    } catch (e) {
-      TLoaders.errorSnackBar(title: 'Oh Snap!', message: e.toString());
+      if (products.isEmpty) {
+        print('ProductController: No featured products found');
+        TLoaders.warningSnackBar(title: 'Warning', message: 'No featured products available');
+      }
+    } catch (e, stackTrace) {
+      print('ProductController: Error fetching featured products: $e\nStackTrace: $stackTrace');
+      TLoaders.errorSnackBar(title: 'Oh Snap!', message: 'Failed to load products: $e');
+      featuredProducts.clear();
     } finally {
       isLoading.value = false;
     }
   }
 
-  /// Get the product price or price range for variations.
   String getProductPrice(ProductModel product) {
     double smallestPrice = double.infinity;
     double largestPrice = 0.0;
 
-    // If no variations exist, return the simple price or sale price
-    if (product.productType == ProductType.single.toString() || product.productVariations!.isEmpty) {
-      return (product.salePrice > 0.0 ? product.salePrice : product.price).toString();
+    if (product.productType == ProductType.single.toString() || (product.productVariations?.isEmpty ?? true)) {
+      return (product.salePrice > 0.0 ? product.salePrice : product.price).toStringAsFixed(2);
     } else {
-      // Calculate the smallest and largest prices among variations
       for (var variation in product.productVariations!) {
-        // Determine the price to consider (sale price if available, otherwise regular price)
         double priceToConsider = variation.salePrice > 0.0 ? variation.salePrice : variation.price;
-
-        // Update smallest and largest prices
         if (priceToConsider < smallestPrice) {
           smallestPrice = priceToConsider;
         }
-
         if (priceToConsider > largestPrice) {
           largestPrice = priceToConsider;
         }
       }
-
-      // If smallest and largest prices are the same, return a single price
-      if (smallestPrice.isEqual(largestPrice)) {
-        return largestPrice.toString();
+      if (smallestPrice == largestPrice) {
+        return smallestPrice.toStringAsFixed(2);
       } else {
-        // Otherwise, return a price range
-        return '$smallestPrice - \$$largestPrice';
+        return '${smallestPrice.toStringAsFixed(2)} - \₦ ${largestPrice.toStringAsFixed(2)}';
       }
     }
   }
 
-  /// -- Calculate Discount Percentage
   String? calculateSalePercentage(double originalPrice, double? salePrice) {
-    if (salePrice == null || salePrice <= 0.0) return null;
-    if (originalPrice <= 0) return null;
-
+    if (salePrice == null || salePrice <= 0.0 || originalPrice <= 0.0) return null;
     double percentage = ((originalPrice - salePrice) / originalPrice) * 100;
-    return percentage.toStringAsFixed(0);
+    return '${percentage.toStringAsFixed(0)}%';
   }
 
-  /// -- Check Product Stock Status
   String getProductStockStatus(ProductModel product) {
     if (product.productType == ProductType.single.toString()) {
       return product.stock > 0 ? 'In Stock' : 'Out of Stock';
     } else {
-      final stock = product.productVariations?.fold(0, (previousValue, element) => previousValue + element.stock);
-      return stock != null && stock > 0 ? 'In Stock' : 'Out of Stock';
+      final stock = product.productVariations?.fold<int>(0, (sum, element) => sum + element.stock) ?? 0;
+      return stock > 0 ? 'In Stock' : 'Out of Stock';
     }
   }
 
   Future<void> updateProductStock(String productId, int quantitySold, String variationId) async {
     try {
-      // Fetch Products
       final product = await productRepository.getSingleProduct(productId);
-
+      print('ProductController: Fetched product for stock update: ${product.toJson()}');
       if (variationId.isEmpty) {
-        product.stock -= quantitySold;
+        product.stock = (product.stock - quantitySold).clamp(0, product.stock);
         product.soldQuantity += quantitySold;
-
         await productRepository.updateProduct(product);
+        print('ProductController: Updated simple product stock: ${product.stock}, sold: ${product.soldQuantity}');
       } else {
-        final variation = product.productVariations!.where((variation) => variation.id == variationId).first;
-        variation.stock -= quantitySold;
-        variation.soldQuantity += quantitySold;
-
-
-        await productRepository.updateProduct(product);
+        final variation = product.productVariations?.firstWhere(
+              (v) => v.id == variationId,
+          orElse: () => throw TExceptions('Variation not found', null),
+        );
+        if (variation != null) {
+          variation.stock = (variation.stock - quantitySold).clamp(0, variation.stock);
+          variation.soldQuantity = (variation.soldQuantity ?? 0) + quantitySold;
+          await productRepository.updateProduct(product);
+          print('ProductController: Updated variation stock: ${variation.stock}, sold: ${variation.soldQuantity}');
+        }
       }
-    } catch (e) {
-      TLoaders.errorSnackBar(title: 'Oh Snap!', message: e.toString());
+    } catch (e, stackTrace) {
+      print('ProductController: Error updating product stock: $e\nStackTrace: $stackTrace');
+      TLoaders.errorSnackBar(title: 'Oh Snap!', message: 'Failed to update stock: $e');
     }
   }
 }

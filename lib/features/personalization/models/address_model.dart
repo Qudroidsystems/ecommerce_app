@@ -34,7 +34,10 @@ class AddressModel {
       zipCode: json['zipCode'] ?? json['postal_code'] ?? '',
       country: json['country'] ?? '',
       phoneNo: json['phoneNo'] ?? json['phone_number'] ?? '',
-      selectedAddress: json['selectedAddress'] ?? json['is_default'] ?? false,
+      selectedAddress: json['selectedAddress'] ??
+          (json['is_default'] is bool
+              ? json['is_default']
+              : json['is_default'] == '1' || json['is_default'] == 1),
     );
   }
 

@@ -1,7 +1,7 @@
 class CategoryModel {
   String id;
   String name;
-  String image; // Changed from final to non-final
+  String image;
   String parentId;
   bool isFeatured;
 
@@ -21,7 +21,7 @@ class CategoryModel {
       'name': name,
       'image': image,
       'parent_id': parentId,
-      'is_featured': isFeatured,
+      'is_featured': isFeatured ? '1' : '0', // Convert bool to string for API
     };
   }
 
@@ -31,7 +31,9 @@ class CategoryModel {
       name: json['name'] ?? '',
       image: json['image'] ?? '',
       parentId: json['parent_id']?.toString() ?? '',
-      isFeatured: json['is_featured'] ?? false,
+      isFeatured: json['is_featured'] == '1' || // Handle string "1"
+          json['is_featured'] == true || // Handle bool true
+          (json['is_featured'] is int && json['is_featured'] == 1), // Handle int 1
     );
   }
 }

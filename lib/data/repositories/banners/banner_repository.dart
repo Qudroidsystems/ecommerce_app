@@ -13,7 +13,7 @@ class BannerRepository extends GetxController {
   /// Fetch all active banners from the Laravel API (limited to 3)
   Future<List<BannerModel>> fetchBanners() async {
     try {
-      final response = await THttpHelper.get('/banners?active=true&limit=3');
+      final response = await THttpHelper.get('/banners?active=true&limit=6');
       final List<dynamic> data = response['data'] ?? [];
       return data.map((json) => BannerModel.fromJson(json)).toList();
     } catch (e) {

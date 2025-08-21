@@ -8,16 +8,12 @@ import '../models/product_model.dart';
 class CategoryController extends GetxController {
   static CategoryController get instance => Get.find();
 
-  /// Observables
   RxBool isLoading = true.obs;
   RxList<CategoryModel> allCategories = <CategoryModel>[].obs;
   RxList<CategoryModel> featuredCategories = <CategoryModel>[].obs;
 
-  /// Dependencies
   final _categoryRepository = Get.put(CategoryRepository());
-  final  _productRepository = Get.put(ProductRepository());
-
-
+  final _productRepository = Get.put(ProductRepository());
 
   @override
   void onInit() {
@@ -25,30 +21,34 @@ class CategoryController extends GetxController {
     super.onInit();
   }
 
-  /// Fetch all categories
   Future<void> fetchCategories() async {
     try {
       isLoading.value = true;
 
       // Fetch categories from repository
       final fetchedCategories = await _categoryRepository.getAllCategories();
+      print('Fetched Categories: ${fetchedCategories.map((c) => c.toJson())}');
 
       // Update state
       allCategories.assignAll(fetchedCategories);
       featuredCategories.assignAll(
         allCategories
-            .where((category) => category.isFeatured && category.parentId.isEmpty)
+            .where((category) => category.isFeatured)
             .take(8)
             .toList(),
       );
+      print('Featured Categories: ${featuredCategories.map((c) => c.toJson())}');
+      if (featuredCategories.isEmpty) {
+        TLoaders.warningSnackBar(title: 'Warning', message: 'No featured categories found');
+      }
     } catch (e) {
-      TLoaders.errorSnackBar(title: 'Oh Snap!', message: e.toString());
+      print('Error in fetchCategories: $e');
+      TLoaders.errorSnackBar(title: 'Oh Snap!', message: 'Failed to load categories: $e');
     } finally {
       isLoading.value = false;
     }
   }
 
-  /// Fetch subcategories by category ID
   Future<List<CategoryModel>> getSubCategories(String categoryId) async {
     try {
       return await _categoryRepository.getSubCategories(categoryId);
@@ -58,7 +58,6 @@ class CategoryController extends GetxController {
     }
   }
 
-  /// Fetch products by category ID
   Future<List<ProductModel>> getCategoryProducts({required String categoryId, int limit = 4}) async {
     try {
       return await _productRepository.getProductsForCategory(categoryId: categoryId, limit: limit);

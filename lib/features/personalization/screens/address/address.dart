@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import 'package:get/Get.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../../common/widgets/appbar/appbar.dart';
@@ -25,7 +25,7 @@ class UserAddressScreen extends StatelessWidget {
       body: Padding(
         padding: const EdgeInsets.all(TSizes.defaultSpace),
         child: Obx(
-          () => FutureBuilder(
+              () => FutureBuilder(
             // Use key to trigger refresh
             key: Key(controller.refreshData.value.toString()),
             future: controller.allUserAddresses(),

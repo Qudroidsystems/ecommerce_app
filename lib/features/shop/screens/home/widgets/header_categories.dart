@@ -30,7 +30,7 @@ class THeaderCategories extends StatelessWidget {
           /// It displays a shimmer loader while categories are being loaded, shows a message if no data is found,
           /// and renders a horizontal list of featured categories with images and text.
           Obx(
-            () {
+                () {
               // Check if categories are still loading
               if (categoryController.isLoading.value) return const TCategoryShimmer();
 
@@ -42,17 +42,20 @@ class THeaderCategories extends StatelessWidget {
                 /// Data Found
                 // Display a horizontal list of featured categories with images and text
                 return SizedBox(
-                  height: 80,
+                  height: 100, // Increased height to accommodate content
                   child: ListView.builder(
                     shrinkWrap: true,
                     itemCount: categoryController.featuredCategories.length,
                     scrollDirection: Axis.horizontal,
                     itemBuilder: (_, index) {
                       final category = categoryController.featuredCategories[index];
-                      return TVerticalImageAndText(
-                        title: category.name,
-                        image: category.image,
-                        onTap: () => Get.to(() => SubCategoriesScreen(category: category)),
+                      return Padding(
+                        padding: const EdgeInsets.only(right: TSizes.spaceBtwItems), // Add spacing between items
+                        child: TVerticalImageAndText(
+                          title: category.name,
+                          image: category.image,
+                          onTap: () => Get.to(() => SubCategoriesScreen(category: category)),
+                        ),
                       );
                     },
                   ),

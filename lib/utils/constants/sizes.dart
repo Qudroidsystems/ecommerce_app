@@ -31,9 +31,9 @@ class TSizes {
   static const double imageThumbSize = 80.0;
 
   // Default spacing between sections
-  static const double defaultSpace = 24.0;
+  static const double defaultSpace = 5.0;
   static const double spaceBtwItems = 16.0;
-  static const double spaceBtwSections = 32.0;
+  static const double spaceBtwSections = 19.0;
 
   // Border radius
   static const double borderRadiusSm = 4.0;
@@ -44,9 +44,9 @@ class TSizes {
   static const double dividerHeight = 1.0;
 
   // Product item dimensions
-  static const double productImageSize = 120.0;
+  static const double productImageSize = 100.0;
   static const double productImageRadius = 16.0;
-  static const double productItemHeight = 160.0;
+  static const double productItemHeight = 130.0;
 
   // Input field
   static const double inputFieldRadius = 12.0;

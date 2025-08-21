@@ -12,7 +12,7 @@ class CategoryRepository extends GetxController {
   Future<List<CategoryModel>> getAllCategories() async {
     try {
       final response = await THttpHelper.get('/categories');
-
+      print('API Response: $response'); // Debug
       if (response == null || response['data'] == null) {
         throw const FormatException('Unexpected API response');
       }
@@ -23,7 +23,6 @@ class CategoryRepository extends GetxController {
       throw _handleError(e, 'fetching all categories');
     }
   }
-
 
   /// Get subcategories by categoryId
   Future<List<CategoryModel>> getSubCategories(String categoryId) async {
@@ -62,7 +61,6 @@ class CategoryRepository extends GetxController {
       throw _handleError(e, 'uploading dummy category data');
     }
   }
-
 
   /// Upload product category dummy data to the Laravel API
   Future<void> uploadProductCategoryDummyData(List<ProductCategoryModel> productCategories) async {

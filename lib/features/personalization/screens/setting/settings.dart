@@ -74,42 +74,42 @@ class SettingsScreen extends StatelessWidget {
                     ),
                     const TSettingsMenuTile(
                         icon: Iconsax.bank, title: 'Bank Account', subTitle: 'Withdraw balance to registered bank account'),
-                    const TSettingsMenuTile(
-                        icon: Iconsax.discount_shape, title: 'My Coupons', subTitle: 'List of all the discounted coupons'),
-                    TSettingsMenuTile(
-                        icon: Iconsax.notification, title: 'Notifications', subTitle: 'Set any kind of notification message', onTap: () {}),
-                    const TSettingsMenuTile(
-                        icon: Iconsax.security_card, title: 'Account Privacy', subTitle: 'Manage data usage and connected accounts'),
+                    // const TSettingsMenuTile(
+                    //     icon: Iconsax.discount_shape, title: 'My Coupons', subTitle: 'List of all the discounted coupons'),
+                    // TSettingsMenuTile(
+                    //     icon: Iconsax.notification, title: 'Notifications', subTitle: 'Set any kind of notification message', onTap: () {}),
+                    // const TSettingsMenuTile(
+                    //     icon: Iconsax.security_card, title: 'Account Privacy', subTitle: 'Manage data usage and connected accounts'),
 
                     /// -- App Settings
-                    const SizedBox(height: TSizes.spaceBtwSections),
-                    const TSectionHeading(title: 'App Settings', showActionButton: false),
-                    const SizedBox(height: TSizes.spaceBtwItems),
-                    TSettingsMenuTile(
-                      icon: Iconsax.document_upload,
-                      title: 'Load Data',
-                      subTitle: 'Upload Data to your Cloud Firebase',
-                      onTap: () => Get.to(() => const UploadDataScreen()),
-                    ),
-                    const SizedBox(height: TSizes.spaceBtwItems),
-                    TSettingsMenuTile(
-                      icon: Iconsax.location,
-                      title: 'Geolocation',
-                      subTitle: 'Set recommendation based on location',
-                      trailing: Switch(value: true, onChanged: (value) {}),
-                    ),
-                    TSettingsMenuTile(
-                      icon: Iconsax.security_user,
-                      title: 'Safe Mode',
-                      subTitle: 'Search result is safe for all ages',
-                      trailing: Switch(value: false, onChanged: (value) {}),
-                    ),
-                    TSettingsMenuTile(
-                      icon: Iconsax.image,
-                      title: 'HD Image Quality',
-                      subTitle: 'Set image quality to be seen',
-                      trailing: Switch(value: false, onChanged: (value) {}),
-                    ),
+                    // const SizedBox(height: TSizes.spaceBtwSections),
+                    // const TSectionHeading(title: 'App Settings', showActionButton: false),
+                    // const SizedBox(height: TSizes.spaceBtwItems),
+                    // TSettingsMenuTile(
+                    //   icon: Iconsax.document_upload,
+                    //   title: 'Load Data',
+                    //   subTitle: 'Upload Data to your Cloud Firebase',
+                    //   onTap: () => Get.to(() => const UploadDataScreen()),
+                    // ),
+                    // const SizedBox(height: TSizes.spaceBtwItems),
+                    // TSettingsMenuTile(
+                    //   icon: Iconsax.location,
+                    //   title: 'Geolocation',
+                    //   subTitle: 'Set recommendation based on location',
+                    //   trailing: Switch(value: true, onChanged: (value) {}),
+                    // ),
+                    // TSettingsMenuTile(
+                    //   icon: Iconsax.security_user,
+                    //   title: 'Safe Mode',
+                    //   subTitle: 'Search result is safe for all ages',
+                    //   trailing: Switch(value: false, onChanged: (value) {}),
+                    // ),
+                    // TSettingsMenuTile(
+                    //   icon: Iconsax.image,
+                    //   title: 'HD Image Quality',
+                    //   subTitle: 'Set image quality to be seen',
+                    //   trailing: Switch(value: false, onChanged: (value) {}),
+                    // ),
 
                     /// -- Logout Button
                     const SizedBox(height: TSizes.spaceBtwSections),

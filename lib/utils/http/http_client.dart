@@ -5,7 +5,10 @@ import 'package:get_storage/get_storage.dart';
 import '../exceptions/exceptions.dart';
 
 class THttpHelper {
-  static const String baseUrl = 'http://192.168.1.103:8000/api';
+  // static const String baseUrl = 'http://10.0.2.2:8000/api';
+  // static const String storageBaseUrl = 'http://10.0.2.2:8000/storage';
+  static const String baseUrl = 'http://api.gozakmart.com/api';
+  static const String storageBaseUrl = 'http://api.gozakmart.com/storage';
   static final _storage = GetStorage();
 
   static Future<void> fetchCsrfToken() async {
@@ -38,6 +41,70 @@ class THttpHelper {
     };
   }
 
+  static Map<String, dynamic> _replaceHost(Map<String, dynamic> data) {
+    String replaceHost(String url) {
+      print('THttpHelper: Processing URL: $url'); // Debug
+      if (!url.startsWith('http')) {
+        final newUrl = '$storageBaseUrl/$url';
+        print('THttpHelper: Converted relative URL to: $newUrl'); // Debug
+        return newUrl;
+      }
+      final newUrl = url.replaceAll('http://127.0.0.1:8000', 'http://10.0.2.2:8000');
+      print('THttpHelper: Converted full URL to: $newUrl'); // Debug
+      return newUrl;
+    }
+
+    print('THttpHelper: Original data: $data'); // Debug
+    if (data['data'] is List) {
+      data['data'] = (data['data'] as List).map((item) {
+        if (item is Map<String, dynamic>) {
+          return _replaceHostInItem(item);
+        }
+        return item;
+      }).toList();
+    } else if (data['data'] is Map<String, dynamic>) {
+      data['data'] = _replaceHostInItem(data['data']);
+    }
+    print('THttpHelper: Transformed data: $data'); // Debug
+    return data;
+  }
+
+  static Map<String, dynamic> _replaceHostInItem(Map<String, dynamic> item) {
+    String replaceHost(String url) {
+      if (!url.startsWith('http')) {
+        return '$storageBaseUrl/$url';
+      }
+      return url.replaceAll('http://127.0.0.1:8000', 'http://10.0.2.2:8000');
+    }
+
+    // Handle product-related fields
+    item['thumbnail'] = item['thumbnail'] != null ? replaceHost(item['thumbnail'] as String) : '';
+    if (item['brand'] != null && item['brand']['logo'] != null) {
+      item['brand']['logo'] = replaceHost(item['brand']['logo'] as String);
+    }
+    if (item['images'] != null) {
+      item['images'] = (item['images'] as List).map((img) => img != null ? replaceHost(img as String) : '').toList();
+    }
+    if (item['product_variations'] != null) {
+      item['product_variations'] = (item['product_variations'] as List).map((varItem) {
+        if (varItem['image'] != null) {
+          varItem['image'] = replaceHost(varItem['image'] as String);
+        }
+        return varItem;
+      }).toList();
+    }
+    // Handle category image field
+    if (item['image'] != null) {
+      item['image'] = replaceHost(item['image'] as String);
+    }
+    // Handle banner image_url field
+    if (item['image_url'] != null) {
+      item['image_url'] = replaceHost(item['image_url'] as String);
+    }
+
+    return item;
+  }
+
   static Future<Map<String, dynamic>> get(String endpoint, {bool skipCsrf = false}) async {
     try {
       if (!skipCsrf) await fetchCsrfToken();
@@ -45,7 +112,8 @@ class THttpHelper {
       final url = Uri.parse('$baseUrl/${endpoint.replaceAll(RegExp(r'^/+'), '')}');
       print('THttpHelper: GET request to $url, headers: $headers');
       final response = await http.get(url, headers: headers);
-      return _handleResponse(response);
+      final processedResponse = _handleResponse(response);
+      return _replaceHost(processedResponse);
     } catch (e) {
       print('THttpHelper: GET error: $e');
       throw TExceptions('Network error: $e', null);
@@ -117,6 +185,7 @@ class THttpHelper {
       var request = http.MultipartRequest('POST', url);
       request.headers.addAll(headers);
       request.files.add(await http.MultipartFile.fromPath(fieldName, file.path));
+      request.fields['type'] = 'image';
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
       return _handleResponse(response);
@@ -129,16 +198,15 @@ class THttpHelper {
   static Map<String, dynamic> _handleResponse(http.Response response) {
     try {
       print('THttpHelper: Response status: ${response.statusCode}, body: ${response.body}');
-
-      // Check for HTML response (server error)
       if (response.body.contains('<!DOCTYPE html>')) {
         throw TExceptions('Invalid response: Server returned HTML instead of JSON', response.statusCode);
       }
-
-      // Parse the JSON response
       final body = response.body.isNotEmpty ? jsonDecode(response.body) : {};
-
-      // Handle successful responses (2xx)
+      if (body is Map<String, dynamic> && body['data'] is List<dynamic>) {
+        if (body['data'].contains(null)) {
+          print('THttpHelper: Warning: Response data contains null items: ${body['data']}');
+        }
+      }
       if (response.statusCode >= 200 && response.statusCode < 300) {
         if (body is Map<String, dynamic>) {
           return body;
@@ -147,28 +215,18 @@ class THttpHelper {
         } else {
           return {'success': true, 'data': body};
         }
-      }
-      // Handle client/server errors but with valid JSON response
-      else if (body is Map<String, dynamic>) {
-        // If it's a valid JSON response (like Laravel API responses), return it
-        // Let the calling method handle the success/failure logic based on the 'success' field
+      } else if (body is Map<String, dynamic>) {
         return body;
-      }
-      // Handle specific HTTP status codes that should throw exceptions
-      else if (response.statusCode == 401) {
+      } else if (response.statusCode == 401) {
         throw TExceptions('Unauthorized: Invalid or expired token', response.statusCode);
-      }
-      // Handle other errors
-      else {
+      } else {
         throw TExceptions.fromLaravelResponse(body, response.statusCode);
       }
     } catch (e) {
       print('THttpHelper: Response handling error: $e');
-      // If it's already a TExceptions, re-throw it
       if (e is TExceptions) {
         throw e;
       }
-      // For JSON parsing errors, throw with the response body
       throw TExceptions('Failed to parse response: ${response.body}', response.statusCode);
     }
   }

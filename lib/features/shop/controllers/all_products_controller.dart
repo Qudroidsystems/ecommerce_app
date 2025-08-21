@@ -1,9 +1,7 @@
 import 'package:cwt_ecommerce_app/data/repositories/product/product_repository.dart';
 import 'package:get/get.dart';
-
 import '../../../utils/popups/loaders.dart';
 import '../models/product_model.dart';
-
 import '../../../utils/http/http_client.dart'; // Your THttpHelper import
 
 class AllProductsController extends GetxController {

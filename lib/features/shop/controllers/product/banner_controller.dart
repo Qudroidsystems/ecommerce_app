@@ -18,7 +18,7 @@ class BannerController extends GetxController {
     carousalCurrentIndex.value = index;
   }
 
-  /// Fetch banners from Firestore and update the 'banners' list
+  /// Fetch banners
   Future<void> fetchBanners() async {
     try {
       // Start Loading
